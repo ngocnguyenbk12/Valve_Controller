@@ -1,0 +1,247 @@
+#***************************************************************************
+#
+# Copyright (c) 2001-2013
+# Sigma Designs, Inc.
+# All Rights Reserved
+#
+#---------------------------------------------------------------------------
+#
+# Description: Common makefile for generating uVision project
+#              for sample application.
+#
+# Author:   Erik Friis Harck
+#
+# Last Changed By: $Author: efh $
+# Revision:        $Revision: 13932 $
+# Last Changed:    $Date: 2009-08-04 16:27:15 +0200 (Mon, 25 May 2009) $
+#
+#****************************************************************************
+
+#------------------------------------
+# Create uVision project file
+#------------------------------------
+
+# Create list of uVision batch files for every %.obj module
+UVBATFILES:=$(filter %.obj,$(RELFILESINCLUDINGPRELOADED))
+UVBATFILES:=$(UVBATFILES:.obj=.objuvbat)
+UVBATC51CMDFILES:=$(UVBATFILES:.objuvbat=.objuvbatc51cmd)
+UVBATA51CMDFILES:=$(UVBATFILES:.objuvbat=.objuvbata51cmd)
+
+# All files generated with extension %.uvbat %.objuvbat %.aofuvbat are temporary files.
+# All files generated with extension %.uvbatcmd %.objuvbatc51cmd %.objuvbata51cmd %.aofuvbatcmd are temporary files.
+
+# Start generating "$(TARGET).bat"
+$(TARGET).uvbat: $(CSRCFILENAMEFILES)
+# Start generating "$(TARGET).uvcmd" for UVISIONPROJECTGENERATOR
+	@echo CODE_MEMORY_MODE="$(CODE_MEMORY_MODE)" > $@cmd 
+	@echo TARGET="$(TARGET)" >> $@cmd
+	@echo ADEFINES="$(ADEFINES)" >> $@cmd 
+	@echo AFLAGS="$(AFLAGS)" >> $@cmd 
+	@echo ZW_LIBRARY="$(ZW_LIBRARY)" >> $@cmd 
+	@echo INT_VEC="$(INT_VEC)" >> $@cmd 
+	@echo VPATH="$(VPATH)" >> $@cmd 
+	@echo CLASSSPEC="$(CLASSSPEC)" >> $@cmd 
+	@echo SEGMENTSPEC="$(SEGMENTSPEC)" >> $@cmd 
+	@echo TOOLCHAIN="DEPEND" >> $@cmd 
+	@echo CHIP="$(CHIP)" >> $@cmd 
+	@echo RELSDIR="$(RELSDIR)" >> $@cmd 
+	@echo LISTDIR="$(LISTDIR)" >> $@cmd 
+	@echo CDEFINES="$(CDEFINES)" >> $@cmd 
+	@echo CFLAGS="$(CFLAGS)" >> $@cmd 
+	@echo ZW_LIBRARY="$(ZW_LIBRARY)" >> $@cmd 
+	@echo RULESRC="$(RULESRC)" >> $@cmd
+	@echo PRODUCTDIR="$(PRODUCTDIR)" >> $@cmd
+	@echo FREQUENCY="$(FREQUENCY)" >> $@cmd
+	@echo LIBRARY="$(LIBRARY)" >> $@cmd
+	@echo MAKESCHEME="$(MAKESCHEME)" >> $@cmd
+	@echo SENSOR_TYPE="$(SENSOR_TYPE)" >> $@cmd
+	@echo PATCH_ENABLE="$(PATCH_ENABLE)" >> $@cmd
+	@echo PATCH="$(PATCH)" >> $@cmd
+	@echo HOST_INTERFACE="$(HOST_INTERFACE)" >> $@cmd
+	@echo BOARD="$(BOARD)" >> $@cmd
+	@echo APP_NAME="$(APP_NAME)" >> $@cmd 
+	@echo RELFILES="$(RELFILES)" >> $@cmd 
+	@echo ZWLIBROOT="$(ZWLIBROOT)" >> $@cmd 
+	@echo DEPENDENCY_FILE="$(subst \,\\,$(RELSDIR)\Makefile.d)" >> $@cmd 
+	@echo LINKER_SRC_FILES="$(subst $(SPACE),,$(LINKER_SRC_FILES))" >> $@cmd
+	@echo UVISIONPOSTBUILD="1" >> $@cmd
+	@echo MAKECOMMANDLINE="$(MAKE) $(subst APP=$(APP_NAME),,$(MAKEFLAGS)) BUILDDIR=build_prj ZW0x0x" >> $@cmd
+	@echo $(UVISIONPROJECTGENERATOR) $@cmd > $@
+
+%.objuvbat : %.c
+	@echo CODE_MEMORY_MODE="$(CODE_MEMORY_MODE)" > $@c51cmd
+	@echo TARGET="$(TARGET)" >> $@c51cmd
+	@echo ADEFINES="$(ADEFINES)" >> $@c51cmd 
+	@echo AFLAGS="$(AFLAGS)" >> $@c51cmd 
+	@echo INT_VEC="$(INT_VEC)" >> $@c51cmd
+	@echo VPATH="$(VPATH)" >> $@c51cmd
+	@echo CLASSSPEC="$(CLASSSPEC)" >> $@c51cmd
+	@echo SEGMENTSPEC="$(SEGMENTSPEC)" >> $@c51cmd
+	@echo TOOLCHAIN="C51" >> $@c51cmd
+	@echo CHIP="$(CHIP)" >> $@c51cmd
+	@echo RELSDIR="$(RELSDIR)" >> $@c51cmd
+	@echo LISTDIR="$(LISTDIR)" >> $@c51cmd
+	@echo CDEFINES="$(CDEFINES)" >> $@c51cmd
+	@echo CFLAGS="$(CFLAGS)" >> $@c51cmd
+	@echo RULESRC="$(RULESRC)" >> $@c51cmd
+	@echo PRODUCTDIR="$(PRODUCTDIR)" >> $@c51cmd
+	@echo FREQUENCY="$(FREQUENCY)" >> $@c51cmd
+	@echo LIBRARY="$(LIBRARY)" >> $@c51cmd
+	@echo MAKESCHEME="$(MAKESCHEME)" >> $@c51cmd
+	@echo SENSOR_TYPE="$(SENSOR_TYPE)" >> $@c51cmd
+	@echo PATCH_ENABLE="$(PATCH_ENABLE)" >> $@c51cmd
+	@echo PATCH="$(PATCH)" >> $@c51cmd
+	@echo HOST_INTERFACE="$(HOST_INTERFACE)" >> $@c51cmd
+	@echo BOARD="$(BOARD)" >> $@c51cmd
+	@echo APP_NAME="$(APP_NAME)" >> $@c51cmd
+	@echo RELFILES="$(RELFILES)" >> $@c51cmd
+	@echo ZWLIBROOT="$(ZWLIBROOT)" >> $@c51cmd
+	@echo LINKER_SRC_FILES="$(subst $(SPACE),,$(LINKER_SRC_FILES))" >> $@c51cmd
+	@echo UVISIONPOSTBUILD="1" >> $@c51cmd
+	@echo MAKECOMMANDLINE="$(MAKE) $(subst APP=$(APP_NAME),,$(MAKEFLAGS)) BUILDDIR=build_prj ZW0x0x" >> $@c51cmd
+	@echo $(UVISIONPROJECTGENERATOR) $@c51cmd > $@
+
+%.objuvbat : %.C
+	@echo CODE_MEMORY_MODE="$(CODE_MEMORY_MODE)" > $@c51cmd
+	@echo TARGET="$(TARGET)" >> $@c51cmd
+	@echo ADEFINES="$(ADEFINES)" >> $@c51cmd 
+	@echo AFLAGS="$(AFLAGS)" >> $@c51cmd 
+	@echo INT_VEC="$(INT_VEC)" >> $@c51cmd
+	@echo VPATH="$(VPATH)" >> $@c51cmd
+	@echo CLASSSPEC="$(CLASSSPEC)" >> $@c51cmd
+	@echo SEGMENTSPEC="$(SEGMENTSPEC)" >> $@c51cmd
+	@echo TOOLCHAIN="C51" >> $@c51cmd
+	@echo CHIP="$(CHIP)" >> $@c51cmd
+	@echo RELSDIR="$(RELSDIR)" >> $@c51cmd
+	@echo LISTDIR="$(LISTDIR)" >> $@c51cmd
+	@echo CDEFINES="$(CDEFINES)" >> $@c51cmd
+	@echo CFLAGS="$(CFLAGS)" >> $@c51cmd
+	@echo RULESRC="$(RULESRC)" >> $@c51cmd
+	@echo PRODUCTDIR="$(PRODUCTDIR)" >> $@c51cmd
+	@echo FREQUENCY="$(FREQUENCY)" >> $@c51cmd
+	@echo LIBRARY="$(LIBRARY)" >> $@c51cmd
+	@echo MAKESCHEME="$(MAKESCHEME)" >> $@c51cmd
+	@echo SENSOR_TYPE="$(SENSOR_TYPE)" >> $@c51cmd
+	@echo PATCH_ENABLE="$(PATCH_ENABLE)" >> $@c51cmd
+	@echo PATCH="$(PATCH)" >> $@c51cmd
+	@echo HOST_INTERFACE="$(HOST_INTERFACE)" >> $@c51cmd
+	@echo BOARD="$(BOARD)" >> $@c51cmd
+	@echo APP_NAME="$(APP_NAME)" >> $@c51cmd
+	@echo RELFILES="$(RELFILES)" >> $@c51cmd
+	@echo ZWLIBROOT="$(ZWLIBROOT)" >> $@c51cmd
+	@echo LINKER_SRC_FILES="$(subst $(SPACE),,$(LINKER_SRC_FILES))" >> $@c51cmd
+	@echo UVISIONPOSTBUILD="1" >> $@c51cmd
+	@echo MAKECOMMANDLINE="$(MAKE) $(subst APP=$(APP_NAME),,$(MAKEFLAGS)) BUILDDIR=build_prj ZW0x0x" >> $@c51cmd
+	@echo $(UVISIONPROJECTGENERATOR) $@c51cmd > $@
+
+%.objuvbat : %.a51
+	@echo CODE_MEMORY_MODE="$(CODE_MEMORY_MODE)" > $@a51cmd
+	@echo TARGET="$(TARGET)" >> $@a51cmd
+	@echo ADEFINES="$(ADEFINES)" >> $@a51cmd 
+	@echo AFLAGS="$(AFLAGS)" >> $@a51cmd 
+	@echo INT_VEC="$(INT_VEC)" >> $@a51cmd
+	@echo VPATH="$(VPATH)" >> $@a51cmd
+	@echo CLASSSPEC="$(CLASSSPEC)" >> $@a51cmd
+	@echo SEGMENTSPEC="$(SEGMENTSPEC)" >> $@a51cmd
+	@echo TOOLCHAIN="A51" >> $@a51cmd
+	@echo CHIP="$(CHIP)" >> $@a51cmd
+	@echo RELSDIR="$(RELSDIR)" >> $@a51cmd
+	@echo LISTDIR="$(LISTDIR)" >> $@a51cmd
+	@echo CDEFINES="$(CDEFINES)" >> $@a51cmd
+	@echo CFLAGS="$(CFLAGS)" >> $@a51cmd
+	@echo RULESRC="$(RULESRC)" >> $@a51cmd
+	@echo PRODUCTDIR="$(PRODUCTDIR)" >> $@a51cmd
+	@echo FREQUENCY="$(FREQUENCY)" >> $@a51cmd
+	@echo LIBRARY="$(LIBRARY)" >> $@a51cmd
+	@echo MAKESCHEME="$(MAKESCHEME)" >> $@a51cmd
+	@echo SENSOR_TYPE="$(SENSOR_TYPE)" >> $@a51cmd
+	@echo PATCH_ENABLE="$(PATCH_ENABLE)" >> $@a51cmd
+	@echo PATCH="$(PATCH)" >> $@a51cmd
+	@echo HOST_INTERFACE="$(HOST_INTERFACE)" >> $@a51cmd
+	@echo BOARD="$(BOARD)" >> $@a51cmd
+	@echo APP_NAME="$(APP_NAME)" >> $@a51cmd
+	@echo RELFILES="$(RELFILES)" >> $@a51cmd
+	@echo ZWLIBROOT="$(ZWLIBROOT)" >> $@a51cmd
+	@echo LINKER_SRC_FILES="$(subst $(SPACE),,$(LINKER_SRC_FILES))" >> $@a51cmd
+	@echo UVISIONPOSTBUILD="1" >> $@a51cmd
+	@echo MAKECOMMANDLINE="$(MAKE) $(subst APP=$(APP_NAME),,$(MAKEFLAGS)) BUILDDIR=build_prj ZW0x0x" >> $@a51cmd
+	@echo $(UVISIONPROJECTGENERATOR) $@a51cmd > $@
+
+# Finally end generating "$(TARGET).bat" and run it to generate "$(TARGET).uvproj"
+$(TARGET).aofuvbat: $(PATCHTABLE_RELFILES) $(RELFILES) $(TARGET).uvbat $(UVBATFILES)
+	@echo CODE_MEMORY_MODE="$(CODE_MEMORY_MODE)" > $@cmd
+	@echo TARGET="$(TARGET)" >> $@cmd
+	@echo ADEFINES="$(ADEFINES)" >> $@cmd 
+	@echo AFLAGS="$(AFLAGS)" >> $@cmd 
+	@echo INT_VEC="$(INT_VEC)" >> $@cmd
+	@echo VPATH="$(VPATH)" >> $@cmd
+	@echo CLASSSPEC="$(CLASSSPEC)" >> $@cmd
+	@echo SEGMENTSPEC="$(SEGMENTSPEC)" >> $@cmd
+	@echo TOOLCHAIN="L51" >> $@cmd
+	@echo CHIP="$(CHIP)" >> $@cmd
+	@echo RELSDIR="$(RELSDIR)" >> $@cmd
+	@echo LISTDIR="$(LISTDIR)" >> $@cmd
+	@echo CDEFINES="$(CDEFINES)" >> $@cmd
+	@echo CFLAGS="$(CFLAGS)" >> $@cmd
+	@echo RULESRC="$(RULESRC)" >> $@cmd
+	@echo PRODUCTDIR="$(PRODUCTDIR)" >> $@cmd
+	@echo FREQUENCY="$(FREQUENCY)" >> $@cmd
+	@echo LIBRARY="$(LIBRARY)" >> $@cmd
+	@echo MAKESCHEME="$(MAKESCHEME)" >> $@cmd
+	@echo SENSOR_TYPE="$(SENSOR_TYPE)" >> $@cmd
+	@echo PATCH_ENABLE="$(PATCH_ENABLE)" >> $@cmd
+	@echo PATCH="$(PATCH)" >> $@cmd
+	@echo HOST_INTERFACE="$(HOST_INTERFACE)" >> $@cmd
+	@echo BOARD="$(BOARD)" >> $@cmd
+	@echo APP_NAME="$(APP_NAME)" >> $@cmd
+	@echo RELFILES="$(RELFILES)" >> $@cmd
+	@echo ZWLIBROOT="$(ZWLIBROOT)" >> $@cmd
+	@echo LINKER_SRC_FILES="$(subst $(SPACE),,$(LINKER_SRC_FILES))" >> $@cmd
+	@echo LFLAGS="$(LFLAGS)" >> $@cmd
+	@echo UVISIONPOSTBUILD="1" >> $@cmd
+	@echo MAKECOMMANDLINE="$(MAKE) $(subst APP=$(APP_NAME),,$(MAKEFLAGS)) BUILDDIR=build_prj ZW0x0x" >> $@cmd
+	@echo $(UVISIONPROJECTGENERATOR) $@cmd > $@
+
+$(TARGET).uvproj: $(TARGET).aofuvbat
+	@copy $(TARGET).uvbat $(foreach uvbatfile, $(UVBATFILES), + $(uvbatfile)) + $(TARGET).aofuvbat $(TARGET).bat
+	@$(TARGET).bat
+	@del $(TARGET).uvbat $(UVBATFILES) $(TARGET).aofuvbat $(TARGET).bat
+	@del $(TARGET).uvbatcmd $(UVBATC51CMDFILES) $(UVBATA51CMDFILES) $(TARGET).aofuvbatcmd
+
+# "uVision" project creation is optional.
+# use "make UVISION=1 ZWxxxxx...."
+ifneq ($(UVISIONPREBUILD),) # Do never recurse into generating new uVision project. We are called from uVision.
+else
+ifneq ($(UVISIONPOSTBUILD),) # Do never recurse into generating new uVision project. We are called from uVision.
+else
+ifeq ($(UVISION),1)
+all: $(TARGET).uvproj
+endif
+endif
+endif # ifneq ($(UVISIONPOSTBUILD),)
+
+ifneq ($(BOOTLOADER_ENABLED),)
+ifneq ($(OTACOMPRESS),)
+HEXFILE_EXTENSION:=otz
+else
+HEXFILE_EXTENSION:=ota
+endif
+else
+HEXFILE_EXTENSION:=hex
+endif
+
+$(subst build,build_prj,$(TARGETDIR))\$(TARGET).$(HEXFILE_EXTENSION): $(TARGET).uvproj
+	$(KEILPATH)\..\UV4\UV4 -j0 -b $(TARGET).uvproj -o $(TARGET)_uvproj_Build_Output.log
+	@fc $(subst build,build_prj,$(TARGETDIR))\$(TARGET).$(HEXFILE_EXTENSION) $(TARGETDIR)\$(TARGET).$(HEXFILE_EXTENSION) | FIND "FC: no dif" > nul
+
+# "uVision" project build is optional.
+# use "make UVISION=2 ZWxxxxx...."
+ifneq ($(UVISIONPREBUILD),) # Do never recurse into generating new uVision project. We are called from uVision.
+else
+ifneq ($(UVISIONPOSTBUILD),) # Do never recurse into generating new uVision project. We are called from uVision.
+else
+ifeq ($(UVISION),2)
+all: $(TARGET).uvproj $(subst build,build_prj,$(TARGETDIR))\$(TARGET).$(HEXFILE_EXTENSION)
+endif
+endif
+endif # ifneq ($(UVISIONPOSTBUILD),)

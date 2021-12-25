@@ -1,0 +1,161 @@
+serialapi_slave_enhanced_232_OTW_ZW050x_US: 
+SUPPORT_GET_ROUTING_TABLE_LINE                  0 /* ZW_GetRoutingInfo */
+SUPPORT_LOCK_ROUTE_RESPONSE                     1 /* ZW_LockRoute */
+SUPPORT_MEMORY_GET_BUFFER                       1 /* MemoryGetBuffer */
+SUPPORT_MEMORY_GET_BYTE                         1 /* MemoryGetByte */
+SUPPORT_MEMORY_GET_ID                           1 /* MemoryGetID */
+SUPPORT_MEMORY_PUT_BUFFER                       1 /* MemoryPutBuffer */
+SUPPORT_MEMORY_PUT_BYTE                         1 /* MemoryPutByte */
+SUPPORT_NVM_GET_ID                              1 /* NVM_get_id */
+SUPPORT_NVM_EXT_READ_LONG_BUFFER                1 /* NVM_ext_read_long_buffer */
+SUPPORT_NVM_EXT_READ_LONG_BYTE                  1 /* NVM_ext_read_long_byte */
+SUPPORT_NVM_EXT_WRITE_LONG_BUFFER               1 /* NVM_ext_write_long_buffer */
+SUPPORT_NVM_EXT_WRITE_LONG_BYTE                 1 /* NVM_ext_write_long_byte */
+SUPPORT_NVM_BACKUP_RESTORE                      1 /* MemoryGetBuffer */
+SUPPORT_PWR_CLK_PD                              0 /* PWR_Clk_PD */
+SUPPORT_PWR_CLK_PUP                             0 /* PWR_Clk_PUp */
+SUPPORT_PWR_SELECT_CLK                          0 /* PWR_Select_Clk */
+SUPPORT_PWR_SETSTOPMODE                         0 /* PWR_SetStopMode */
+SUPPORT_STORE_HOMEID                            0 /* ZW_StoreHomeID */
+SUPPORT_STORE_NODEINFO                          0 /* ZW_StoreNodeInfo */
+SUPPORT_ZW_ADD_NODE_TO_NETWORK                  0 /* ZW_AddNodeToNetwork */
+SUPPORT_ZW_ADD_NODE_DSK_TO_NETWORK              0 /* ZW_AddNodeDskToNetwork */
+SUPPORT_ZW_AES_ECB                              1 /* ZW_AES_ECB */
+SUPPORT_ZW_ARE_NODES_NEIGHBOURS                 0 /* ZW_AreNodesNeighbours */
+SUPPORT_ZW_ASSIGN_RETURN_ROUTE                  0 /* ZW_AssignReturnRoute */
+SUPPORT_ZW_ASSIGN_PRIORITY_RETURN_ROUTE         0 /* ZW_AssignPriorityReturnRoute */
+SUPPORT_ZW_ASSIGN_SUC_RETURN_ROUTE              0 /* ZW_AssignSUCReturnRoute */
+SUPPORT_ZW_ASSIGN_PRIORITY_SUC_RETURN_ROUTE     0 /* ZW_AssignPrioritySUCReturnRoute */
+SUPPORT_ZW_CONTROLLER_CHANGE                    0 /* ZW_ControllerChange */
+SUPPORT_ZW_CREATE_NEW_PRIMARY                   0 /* ZW_CreateNewPrimaryCtrl */
+SUPPORT_ZW_DELETE_RETURN_ROUTE                  0 /* ZW_DeleteReturnRoute */
+SUPPORT_ZW_DELETE_SUC_RETURN_ROUTE              0 /* ZW_DeleteSUCReturnRoute */
+SUPPORT_ZW_ENABLE_SUC                           0 /* ZW_EnableSUC */
+SUPPORT_ZW_EXPLORE_REQUEST_INCLUSION            1 /* ZW_ExploreRequestInclusion */
+SUPPORT_ZW_EXPLORE_REQUEST_EXCLUSION            1 /* ZW_ExploreRequestExclusion */
+SUPPORT_ZW_GET_CONTROLLER_CAPABILITIES          0 /* ZW_GetControllerCapabilities */
+SUPPORT_ZW_GET_PRIORITY_ROUTE                   0 /* ZW_GetPriorityRoute */
+SUPPORT_ZW_SET_PRIORITY_ROUTE                   0 /* ZW_SetPriorityRoute */
+SUPPORT_ZW_GET_NEIGHBOR_COUNT                   0 /* ZW_GetNeighborCount */
+SUPPORT_ZW_GET_NODE_PROTOCOL_INFO               0 /* ZW_GetNodeProtocolInfo */
+SUPPORT_ZW_GET_PROTOCOL_STATUS                  0 /* ZW_GetProtocolStatus */
+SUPPORT_ZW_GET_PROTOCOL_VERSION                 1 /* ZW_GetProtocolVersion */
+SUPPORT_ZW_GET_RANDOM                           1 /* ZW_GetRandomWord */
+SUPPORT_ZW_GET_ROUTING_MAX                      0 /* ZW_GetRoutingMAX */
+SUPPORT_ZW_GET_SUC_NODE_ID                      1 /* ZW_GetSUCNodeID */
+SUPPORT_ZW_GET_VERSION                          1 /* ZW_Version */
+SUPPORT_ZW_GET_VIRTUAL_NODES                    0 /* ZW_GetVirtualNodes */
+SUPPORT_ZW_IS_FAILED_NODE_ID                    0 /* ZW_isFailedNode */
+SUPPORT_ZW_IS_NODE_WITHIN_DIRECT_RANGE          0 /* NotUsed */
+SUPPORT_ZW_IS_PRIMARY_CTRL                      0 /* ZW_IsPrimaryCtrl */
+SUPPORT_ZW_IS_VIRTUAL_NODE                      0 /* ZW_IsVirtualNode */
+SUPPORT_ZW_IS_WUT_KICKED                        0 /* ZW_IsWutKicked */
+SUPPORT_ZW_NETWORK_SET_INCLUDED_NODEINFO        0 /* ZW_NetworkSetIncludedNodeInformation */
+SUPPORT_ZW_NEW_CONTROLLER                       0 /* ZW_NewController */
+SUPPORT_ZW_RANDOM                               0 /* NotUsed */
+SUPPORT_ZW_REDISCOVERY_NEEDED                   0 /* ZW_RediscoveryNeeded */
+SUPPORT_ZW_REMOVE_FAILED_NODE_ID                0 /* ZW_RemoveFailedNode */
+SUPPORT_ZW_REMOVE_NODE_FROM_NETWORK             0 /* ZW_RemoveNodeFromNetwork */
+SUPPORT_ZW_REMOVE_NODE_ID_FROM_NETWORK          0 /* ZW_RemoveNodeIDFromNetwork */
+SUPPORT_ZW_REPLACE_FAILED_NODE                  0 /* ZW_ReplaceFailedNode */
+SUPPORT_ZW_REPLICATION_COMMAND_COMPLETE         0 /* ZW_ReplicationReceiveComplete */
+SUPPORT_ZW_REPLICATION_SEND_DATA                0 /* ZW_ReplicationSend */
+SUPPORT_ZW_REQUEST_NETWORK_UPDATE               1 /* ZW_RequestNetWorkUpdate */
+SUPPORT_ZW_REQUEST_NEW_ROUTE_DESTINATIONS       0 /* NotUsed */
+SUPPORT_ZW_REQUEST_NODE_INFO                    1 /* ZW_RequestNodeInfo */
+SUPPORT_ZW_REQUEST_NODE_NEIGHBOR_UPDATE         0 /* ZW_RequestNodeNeighborUpdate */
+SUPPORT_ZW_RF_POWER_LEVEL_GET                   1 /* ZW_RFPowerLevelGet */
+SUPPORT_ZW_RF_POWER_LEVEL_REDISCOVERY_SET       0 /* NotUsed */
+SUPPORT_ZW_RF_POWER_LEVEL_SET                   1 /* ZW_RFPowerLevelSet */
+SUPPORT_ZW_SEND_DATA                            0 /* ZW_SendData */
+SUPPORT_ZW_SEND_DATA_EX                         1 /* ZW_SendDataEx */
+SUPPORT_ZW_SEND_DATA_ABORT                      1 /* ZW_SendDataAbort */
+SUPPORT_ZW_SEND_DATA_BRIDGE                     0 /* ZW_SendData_Bridge */
+SUPPORT_ZW_SEND_DATA_META                       0 /* ZW_SendDataMeta */
+SUPPORT_ZW_SEND_DATA_META_BRIDGE                0 /* ZW_SendDataMeta_Bridge */
+SUPPORT_ZW_SEND_DATA_META_MR                    0 /* NotUsed */
+SUPPORT_ZW_SEND_DATA_MR                         0 /* NotUsed */
+SUPPORT_ZW_SEND_DATA_MULTI                      1 /* ZW_SendDataMulti */
+SUPPORT_ZW_SEND_DATA_MULTI_EX                   1 /* ZW_SendDataMultiEx */
+SUPPORT_ZW_SEND_DATA_MULTI_BRIDGE               0 /* ZW_SendDataMulti_Bridge */
+SUPPORT_ZW_SET_SECURITY_S0_NETWORK_KEY          1 /* ZW_SetSecurityS0NetworkKey */
+SUPPORT_ZW_GET_SECURITY_S2_PUBLIC_DSK           1 /* ZW_GetSecurityS2PublicDSK */
+SUPPORT_ZW_SET_SECURITY_S2_CRITICAL_NODE_ID     0 /* ZW_SetSecurityS2CriticalNodeID */
+SUPPORT_ZW_GET_SECURITY_KEYS                    1 /* ZW_GetSecurityKeys */
+SUPPORT_ZW_SET_SECURITY_S2_INCLUSION_PUBLIC_DSK_CSA 1 /* ZW_SetSecurityS2InclusionPublicDSK_CSA */
+SUPPORT_ZW_SEND_NODE_INFORMATION                1 /* ZW_SendNodeInformation */
+SUPPORT_ZW_SEND_SLAVE_NODE_INFORMATION          0 /* ZW_SendSlaveNodeInformation */
+SUPPORT_ZW_SEND_SLAVE_DATA                      0 /* ZW_SendSlaveData */
+SUPPORT_ZW_SEND_SUC_ID                          0 /* ZW_SendSUCID */
+SUPPORT_ZW_SEND_TEST_FRAME                      1 /* ZW_SendTestFrame */
+SUPPORT_ZW_SET_DEFAULT                          1 /* ZW_SetDefault */
+SUPPORT_ZW_SET_EXT_INT_LEVEL                    1 /* ZW_SetExtIntLevel */
+SUPPORT_ZW_SET_LEARN_MODE                       1 /* ZW_SetLearnMode */
+SUPPORT_ZW_SET_LEARN_NODE_STATE                 0 /* ZW_SetLearnNodeState */
+SUPPORT_ZW_SET_PROMISCUOUS_MODE                 0 /* ZW_SetPromiscuousMode */
+SUPPORT_ZW_SET_RF_RECEIVE_MODE                  1 /* ZW_SetRFReceiveMode */
+SUPPORT_ZW_SET_ROUTING_INFO                     0 /* NotUsed */
+SUPPORT_ZW_SET_ROUTING_MAX                      0 /* ZW_SetRoutingMAX */
+SUPPORT_ZW_SET_SLAVE_LEARN_MODE                 0 /* ZW_SetSlaveLearnMode */
+SUPPORT_ZW_SET_SLEEP_MODE                       1 /* ZW_SetSleepMode */
+SUPPORT_ZW_SET_SUC_NODE_ID                      0 /* ZW_SetSUCNodeID */
+SUPPORT_ZW_SET_WUT_TIMEOUT                      1 /* ZW_SetWutTimeout */
+SUPPORT_ZW_SUPPORT9600_ONLY                     0 /* ZW_Support9600Only */
+SUPPORT_ZW_TYPE_LIBRARY                         1 /* ZW_Type_Library */
+SUPPORT_ZW_WATCHDOG_DISABLE                     1 /* ZW_WatchDogDisable */
+SUPPORT_ZW_WATCHDOG_ENABLE                      1 /* ZW_WatchDogEnable */
+SUPPORT_ZW_WATCHDOG_KICK                        1 /* ZW_WatchDogKick */
+SUPPORT_ZW_WATCHDOG_START                       1 /* ZW_WatchDogEnable */
+SUPPORT_ZW_WATCHDOG_STOP                        1 /* ZW_WatchDogDisable */
+SUPPORT_ZW_NVR_GET_VALUE                        1 /* ZW_NVRGetValue */
+SUPPORT_FUNC_ID_CLEAR_TX_TIMERS                 1 /* ZW_ClearTxTimers */
+SUPPORT_FUNC_ID_GET_TX_TIMERS                   1 /* ZW_GetTxTimer */
+SUPPORT_ZW_CLEAR_NETWORK_STATS                  1 /* ZW_ClearNetworkStats */
+SUPPORT_ZW_GET_NETWORK_STATS                    1 /* ZW_GetNetworkStats */
+SUPPORT_ZW_GET_BACKGROUND_RSSI                  1 /* ZW_GetBackgroundRSSI */
+SUPPORT_ZW_SET_LISTEN_BEFORE_TALK_THRESHOLD     1 /* ZW_SetListenBeforeTalkThreshold */
+SUPPORT_ZW_NETWORK_MANAGEMENT_SET_MAX_INCLUSION_REQUEST_INTERVALS 1 /* ZW_NetworkManagementSetMaxI
+SUPPORT_SEND_DATA_TIMING                        1
+SUPPORT_ADD_REMOVE_PROTECT                      0
+SUPPORT_SERIAL_API_STARTUP_NOTIFICATION         1
+SUPPORT_ZW_NVR_GET_APP_VALUE                    1
+SUPPORT_ZW_FIRMWARE_UPDATE_NVM                  1
+SUPPORT_ZW_SECURITY_SETUP                       1
+SUPPORT_APPLICATION_SECURITY_EVENT              1
+SUPPORT_SERIAL_API_GET_INIT_DATA                1
+SUPPORT_SERIAL_API_APPL_NODE_INFORMATION        1
+SUPPORT_APPLICATION_COMMAND_HANDLER_BRIDGE      0
+SUPPORT_APPLICATION_COMMAND_HANDLER             1
+SUPPORT_PROMISCUOUS_APPLICATION_COMMAND_HANDLER 0
+SUPPORT_SERIAL_API_SET_TIMEOUTS                 1
+SUPPORT_SERIAL_API_GET_CAPABILITIES             1
+SUPPORT_SERIAL_API_SOFT_RESET                   1
+SUPPORT_SERIAL_API_POWER_MANAGEMENT             1
+SUPPORT_SERIAL_API_READY                        1
+SUPPORT_SERIAL_API_EXT                          1
+SUPPORT_SERIAL_API_SETUP                        1
+SUPPORT_SERIAL_API_APPL_NODE_INFORMATION_CMD_CLASSES  1
+SUPPORT_CLOCK_SET                               0
+SUPPORT_CLOCK_GET                               0
+SUPPORT_CLOCK_CMP                               0
+SUPPORT_RTC_TIMER_CREATE                        0
+SUPPORT_RTC_TIMER_READ                          0
+SUPPORT_RTC_TIMER_DELETE                        0
+SUPPORT_RTC_TIMER_CALL                          0
+SUPPORT_ZW_AUTO_PROGRAMMING                     1
+SUPPORT_TIMER_START                             0
+SUPPORT_TIMER_RESTART                           0
+SUPPORT_TIMER_CANCEL                            0
+SUPPORT_TIMER_CALL                              0
+SUPPORT_ZW_NUNIT                                0
+SUPPORT_ZW_PORT_STATUS                          0
+SUPPORT_SERIAL_API_GET_APPL_HOST_MEMORY_OFFSET  0
+SUPPORT_ZW_SET_LEARN_NODE_STATE                 0 /* ZW_SetLearnNodeState */
+SUPPORT_SERIAL_API_APPL_SLAVE_NODE_INFORMATION  0
+SUPPORT_APPLICATION_SLAVE_COMMAND_HANDLER       1
+SUPPORT_ZW_APPLICATION_UPDATE                   1
+SUPPORT_APPLICATION_RF_NOTIFY                   0
+SUPPORT_ZW_APPLICATION_CONTROLLER_UPDATE        0
+SUPPORT_GET_TX_COUNTER                          0
+SUPPORT_RESET_TX_COUNTER                        0
+SUPPORT_ZW_SEND_DATA 1

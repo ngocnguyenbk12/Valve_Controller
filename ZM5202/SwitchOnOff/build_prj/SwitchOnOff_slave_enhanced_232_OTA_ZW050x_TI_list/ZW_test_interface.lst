@@ -1,0 +1,3708 @@
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE ZW_TEST_INTERFACE
+OBJECT MODULE PLACED IN .\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_test_interface.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\APPLICATIONUTILITIES\ZW_TEST_INTERFACE.C LARGE OBJECTADVANCED WARNING
+                    -LEVEL(1) OPTIMIZE(11,SIZE) BROWSE NOINTPROMOTE INTVECTOR(0X1800) INCDIR(..\..\Z-WAVE\INCLUDE;..\..\Z-WAVE\IO_DEFINES;.\B
+                    -UILD_PRJ;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI_RELS;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW
+                    -050X_TI;C:\KEIL_V5\C51\INC;..\APPLICATIONUTILITIES;..\APPLICATIONCOMMANDHANDLERS;..\..\ZLIB\CMDCLASS;..\..\ZLIB\DEVTYPES
+                    -;..\..\ZLIB\HANDLER;..\Valve_fucntion) DB OE NOCO SB LC CD DEFINE(BOOTLOADER_ENABLED,slave_enhanced_232,US,ZAF_BUILD_NO=
+                    -52445,ZW_SECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,NEW_NODEINFO,ZW_SEL
+                    -F_HEAL,BANKING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLED,BOOTLOADER_ENABLED,slave_e
+                    -nhanced_232,US,ZAF_BUILD_NO=52445,ZW_SECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050
+                    -x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL,BANKING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLE
+                    -D) DEBUG PRINT(.\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_list\ZW_test_interface.lst) TABS(2) OBJECT(.\bui
+                    -ld_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_test_interface.obj)
+
+line level    source
+
+   1          /**
+   2           * @file ZW_test_interface.c
+   3           * @brief Parses incoming ASCII characters to commands for the application layer.
+   4           *
+   5           * The syntax for commands is:
+   6           *
+   7           * <channel> <User string><Carriage return>
+   8           *
+   9           * <channel> is letters [a-z] including 'w'.
+  10           *
+  11           * NOTICE: Using this module together with the key_driver.c in
+  12           * ApplicationUtilities on the ZDP03A development kit results in the S5/KEY05
+  13           * not working since it's pin is shared with UART0 TX.
+  14           *
+  15           * @date 12/02/2015
+  16           * @author Christian Salmony Olsen
+  17           */
+  18          
+  19          /****************************************************************************/
+  20          /*                              INCLUDE FILES                               */
+  21          /****************************************************************************/
+  22          
+  23          #include <ZW_stdint.h>
+   1      =1  /*
+   2      =1   * ZW_stdint.h
+   3      =1   *
+   4      =1   * Define integer types by their conventional POSIX names [1].
+   5      =1   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =1   *
+   7      =1   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =1   *
+   9      =1   *  Created on: 18/01/2013
+  10      =1   *      Author: jbu
+  11      =1   */
+  12      =1  #ifndef ZW_STDINT_H_
+  13      =1  #define ZW_STDINT_H_
+  14      =1  
+  15      =1  #ifdef __GNUC__
+  18      =1  
+  19      =1  #ifndef _STDINT_H // yield to "proper" stdint
+  20      =1  #define _STDINT_H
+  21      =1  
+  22      =1  typedef unsigned char uint8_t;
+  23      =1  typedef unsigned short uint16_t;
+  24      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 2   
+
+  25      =1  /* These are needed to satisfy Yakindu*/
+  26      =1  #ifndef __GNUC__
+  27      =1  typedef signed short int_fast16_t;
+  28      =1  typedef unsigned short uint_fast16_t;
+  29      =1  #endif
+  30      =1  #ifdef __C51__
+  31      =1  typedef signed long int32_t;
+  32      =1  typedef unsigned long uint32_t;
+  33      =1  typedef int32_t  *intptr_t;
+  34      =1  #endif
+  35      =1  typedef unsigned char bool;
+  36      =1  //   typedef unsigned __int64  uintptr_t;
+  37      =1  //#else // _WIN64 ][
+  38      =1  //   typedef _W64 signed int   intptr_t;
+  39      =1  //   typedef _W64 unsigned int uintptr_t;
+  40      =1  #define true (1)
+  41      =1  #define false (0)
+  42      =1  
+  43      =1  #endif /*#ifndef _STDINT_H*/
+  44      =1  
+  45      =1  /* These are actually not POSIX, but from contiki */
+  46      =1  typedef uint8_t u8_t;
+  47      =1  typedef uint16_t u16_t;
+  48      =1  
+  49      =1  #endif /* ZW_STDINT_H_ */
+  24          #include <ZW_typedefs.h>
+   1      =1  /*******************************  ZW_typedefs.h  *******************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Products that speak Z-Wave work together better
+  11      =1   *
+  12      =1   *              Copyright (c) 2008
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Module description
+  25      =1   *
+  26      =1   * Author:   Ivar Jeppesen
+  27      =1   *
+  28      =1   * Last Changed By:  $Author: efh $
+  29      =1   * Revision:         $Revision: 29359 $
+  30      =1   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =1   *
+  32      =1   ****************************************************************************/
+  33      =1  #ifndef _ZW_TYPEDEFS_H_
+  34      =1  #define _ZW_TYPEDEFS_H_
+  35      =1  
+  36      =1  #ifndef __C51__
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 3   
+
+  44      =1  
+  45      =1  /****************************************************************************/
+  46      =1  /*                              INCLUDE FILES                               */
+  47      =1  /****************************************************************************/
+  48      =1  
+  49      =1  /****************************************************************************/
+  50      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  51      =1  /****************************************************************************/
+  52      =1  #ifndef BYTE
+  53      =1  typedef unsigned char   BYTE;
+  54      =1  typedef unsigned short  WORD;
+  55      =1  typedef unsigned long   DWORD;
+  56      =1  
+  57      =1  #define IIBYTE BYTE idata  /* Internal indexed data byte */
+  58      =1  #define IBYTE  BYTE data   /* Internal data byte */
+  59      =1  #define IWORD  WORD data   /* Internal data word */
+  60      =1  #define IDWORD DWORD data  /* Internal data double word*/
+  61      =1  
+  62      =1  #define XBYTE  BYTE xdata  /* External data byte */
+  63      =1  #define XWORD  WORD xdata  /* External data word */
+  64      =1  #define XDWORD DWORD xdata /* External data double word */
+  65      =1  #define BBYTE  BYTE bdata  /* Internal bit adressable byte */
+  66      =1  
+  67      =1  #define PBYTE  XBYTE
+  68      =1  #define PWORD  XWORD
+  69      =1  #define PDWORD XDWORD
+  70      =1  
+  71      =1  #define BOOL   bit         /* Internal bit */
+  72      =1  
+  73      =1  #define CODE   code        /* Used for defining callback function which allways */
+  74      =1                             /* resides in code space. */
+  75      =1  
+  76      =1  typedef BYTE * BYTE_P;
+  77      =1  typedef WORD * WORD_P;
+  78      =1  typedef DWORD * DWORD_P;
+  79      =1  
+  80      =1  typedef struct
+  81      =1  {
+  82      =1    BYTE anything;
+  83      =1  } sSomeXDATA4K;
+  84      =1  typedef sSomeXDATA4K * XDATA4K_P;
+  85      =1  #endif
+  86      =1  
+  87      =1  #ifndef EOF
+  88      =1  #define EOF (-1)
+  89      =1  #endif
+  90      =1  
+  91      =1  #ifndef NULL
+  92      =1  #define NULL  (0)
+  93      =1  #endif
+  94      =1  
+  95      =1  #ifndef TRUE
+  96      =1  #define TRUE  (1)
+  97      =1  #define FALSE (0)
+  98      =1  #endif
+  99      =1  
+ 100      =1  /* Define for making easy and consistent callback definitions */
+ 101      =1  #define VOID_CALLBACKFUNC(completedFunc)  void (CODE *completedFunc)
+ 102      =1  
+ 103      =1  /* Remove memory specifier byte from generic pointer
+ 104      =1     See also: http://www.keil.com/forum/3443/ */
+ 105      =1  #ifdef __C51__
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 4   
+
+ 106      =1  #define STRIP_GENERIC_PTR(p) ((unsigned) (void *) (p))
+ 107      =1  /* Macros to test generic pointers for NULL-ness, even if they
+ 108      =1  have been promoted from memory specific pointers */
+ 109      =1  #define IS_NULL(x)  (STRIP_GENERIC_PTR(x) == 0)
+ 110      =1  #define NON_NULL(x) (STRIP_GENERIC_PTR(x) != 0)
+ 111      =1  #else
+ 115      =1  
+ 116      =1  #define UNUSED(x) x = x; /* Hack to silence warning C280 Unreferenced local variable */
+ 117      =1  #define UNUSED_CONST(x) if(x) ; /* Hack to silence warning C280 Unreferenced const variable */
+ 118      =1  
+ 119      =1  #define UIP_HTONL(x) x // C51 is big endian by default
+ 120      =1  
+ 121      =1  /****************************************************************************/
+ 122      =1  /*                                 MACROS                                   */
+ 123      =1  /****************************************************************************/
+ 124      =1  
+ 125      =1  /* offset of field m in a struct s */
+ 126      =1  #ifndef offsetof
+ 127      =1  #define offsetof(s,m)   (WORD)( (BYTE_P)&(((s *)0)->m) - (BYTE_P)0 )
+ 128      =1  #endif
+ 129      =1  
+ 130      =1  
+ 131      =1  #endif /* _ZW_TYPEDEFS_H_ */
+  25          #include <ZW_mem_api.h>
+   1      =1  /*******************************  ZW_MEM_API.H  *******************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Z-Wave, the wireless lauguage.
+  11      =1   *
+  12      =1   *              Copyright (c) 2001
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Copy of data to/from non-volatile memory (EEPROM)
+  25      =1   *              Standard memory functions.
+  26      =1   *
+  27      =1   * Author:   Ivar Jeppesen
+  28      =1   *
+  29      =1   * Last Changed By:  $Author: efh $
+  30      =1   * Revision:         $Revision: 29682 $
+  31      =1   * Last Changed:     $Date: 2014-10-06 15:12:09 +0200 (ma, 06 okt 2014) $
+  32      =1   *
+  33      =1   ****************************************************************************/
+  34      =1  #ifndef _ZW_MEM_API_H_
+  35      =1  #define _ZW_MEM_API_H_
+  36      =1  
+  37      =1  /****************************************************************************/
+  38      =1  /*                              INCLUDE FILES                               */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 5   
+
+  39      =1  /****************************************************************************/
+  40      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  41      =1  
+  42      =1  #ifdef NO_MEM_FUNCTIONS
+  45      =1  #define memcpy(dst, src, len)  __ZW_memcpy(len, dst, src)
+  46      =1  #define memcmp(dst, src, len)  __ZW_memcmp(len, dst, src)
+  47      =1  #define memset(dst, val, len)  __ZW_memset(val, len, dst)
+  48      =1  #endif
+  49      =1  #define ZW_memcpy(dst, src, len)  __ZW_memcpy(len, dst, src)
+  50      =1  #define ZW_memcmp(dst, src, len)  __ZW_memcmp(len, dst, src)
+  51      =1  #define ZW_memset(dst, val, len)  __ZW_memset(val, len, dst)
+  52      =1  
+  53      =1  /****************************************************************************/
+  54      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  55      =1  /****************************************************************************/
+  56      =1  /****************************  Memory  **************************************
+  57      =1  ** Copy of data to non-volatile memory (FLASH) only valid for slave and
+  58      =1  ** slave_routing libraries
+  59      =1  **
+  60      =1  **  Side effects: The non-volatile memory write operation is delayed via a timer.
+  61      =1  **                The physical write is delayed about 200 msec.
+  62      =1  **/
+  63      =1  
+  64      =1  /*============================   MemoryGetID   ===============================
+  65      =1  **  Copy the Home-ID and Node-ID to the specified RAM addresses
+  66      =1  **  BYTE *homeid pointer to RAM were the home ID should be placed
+  67      =1  **  BYTE *nodeid pointer to RAM were the Node ID should be placed.
+  68      =1  **--------------------------------------------------------------------------*/
+  69      =1  #define ZW_MEMORY_GET_ID(homeid,nodeid)   MemoryGetID(homeid,nodeid)
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 6   
+
+  70      =1  
+  71      =1  /*============================   MemoryGetByte   ============================
+  72      =1  **    Read one byte from the EEPROM
+  73      =1  **
+  74      =1  ** BYTE               RET Data
+  75      =1  ** MemoryGetByte(
+  76      =1  ** WORD  offset );    IN   Application area offset
+  77      =1  **--------------------------------------------------------------------------*/
+  78      =1  #define ZW_MEM_GET_BYTE(offset) MemoryGetByte(offset)
+  79      =1  
+  80      =1  /*============================   MemoryPutByte   ============================
+  81      =1  **    Write one byte to the EEPROM
+  82      =1  **
+  83      =1  ** BYTE               RET False if write buffer full
+  84      =1  ** MemoryPutByte(
+  85      =1  ** WORD  offset,      IN   Application area offset
+  86      =1  ** BYTE  data );      IN   Data to store
+  87      =1  **--------------------------------------------------------------------------*/
+  88      =1  #define ZW_MEM_PUT_BYTE(offset,data) MemoryPutByte(offset,data)
+  89      =1  
+  90      =1  /*============================   MemoryGetBuffer   =============================
+  91      =1  **    Read number of bytes from the EEPROM to a RAM buffer
+  92      =1  **
+  93      =1  ** void               RET Nothing
+  94      =1  ** MemoryGetBuffer(
+  95      =1  ** WORD  offset,      IN   Application area offset
+  96      =1  ** BYTE  *buffer,     IN   Buffer pointer
+  97      =1  ** WORD  length );    IN   Number of bytes to read
+  98      =1  **--------------------------------------------------------------------------*/
+  99      =1  #define ZW_MEM_GET_BUFFER(offset,buffer,length) MemoryGetBuffer(offset,buffer,length)
+ 100      =1  
+ 101      =1  /*============================   MemoryPutBuffer   =============================
+ 102      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 103      =1  **
+ 104      =1  **  Side effects: The EEPROM write operation has been done when function returns
+ 105      =1  **                and the callback is called max 10ms later via a timer
+ 106      =1  **
+ 107      =1  ** BYTE               RET FALSE if the buffer put queue is full
+ 108      =1  ** MemoryPutBuffer(
+ 109      =1  ** WORD  offset,          IN   Application area offset
+ 110      =1  ** BYTE  *buffer,         IN   Buffer pointer
+ 111      =1  ** WORD  length,          IN   Number of bytes to read
+ 112      =1  ** VOID_CALLBACKFUNC(func)( void) ); IN   Buffer write completed function pointer
+ 113      =1  **--------------------------------------------------------------------------*/
+ 114      =1  #define ZW_MEM_PUT_BUFFER(offset,buffer,length, func) MemoryPutBuffer(offset,buffer,length, func)
+ 115      =1  
+ 116      =1  
+ 117      =1  /*============================   ZW_MemoryPutBuffer   ========================
+ 118      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 119      =1  **
+ 120      =1  **  Side effects: The EEPROM write operation has been done when function returns
+ 121      =1  **                and the callback is called max 10ms later via a timer
+ 122      =1  **
+ 123      =1  ** BYTE               RET FALSE if the buffer put queue is full
+ 124      =1  ** ZW_MemoryPutBuffer(
+ 125      =1  ** WORD  offset,          IN   Application area offset
+ 126      =1  ** BYTE  length,          IN   Number of bytes to write
+ 127      =1  ** BYTE  *buffer,         IN   Buffer pointer
+ 128      =1  **--------------------------------------------------------------------------*/
+ 129      =1  #define ZW_MEM_PUT_BUFFER_NO_CB(offset,buffer,length) ZW_MemoryPutBuffer(offset,buffer,length)
+ 130      =1  
+ 131      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 7   
+
+ 132      =1  /*===============================   ZW_EepromInit   ====================================
+ 133      =1  ** This function writes ZEROs in the entire EEPROM, then it write the homeID
+ 134      =1  ** if it different from ZERO. This function will only operate in the production mode.
+ 135      =1  **-----------------------------------------------------------------------------------*/
+ 136      =1  #define ZW_EEPROM_INIT(HOMEID)       ZW_EepromInit(HOMEID)
+ 137      =1  
+ 138      =1  /*============================   MemoryFlush   =============================
+ 139      =1  **    Write the content of the FLASH RAM buffer to the FLASH.
+ 140      =1  **
+ 141      =1  **  Side effects: During the write process the CPU wuill be in idle state.
+ 142      =1  **--------------------------------------------------------------------------*/
+ 143      =1  #define ZW_MEM_FLUSH()   ZW_MemoryFlush()
+ 144      =1  
+ 145      =1  
+ 146      =1  /****************************************************************************/
+ 147      =1  /*                              EXPORTED DATA                               */
+ 148      =1  /****************************************************************************/
+ 149      =1  
+ 150      =1  /****************************************************************************/
+ 151      =1  /*                           LOW LEVEL EXPORTED FUNCTIONS                   */
+ 152      =1  /****************************************************************************/
+ 153      =1  
+ 154      =1  
+ 155      =1  /****************************************************************************/
+ 156      =1  /*                           EXPORTED FUNCTIONS                             */
+ 157      =1  /****************************************************************************/
+ 158      =1  
+ 159      =1  /*============================   MemoryGetID   ===============================
+ 160      =1  **    Copy the Home-ID and Node-ID to the specified RAM addresses
+ 161      =1  **
+ 162      =1  **--------------------------------------------------------------------------*/
+ 163      =1  extern void               /*RET Nothing          */
+ 164      =1  MemoryGetID(
+ 165      =1    BYTE *homeID,           /*OUT  Home-ID pointer            */
+ 166      =1    BYTE *nodeID );         /*OUT  Node-ID pointer            */
+ 167      =1  
+ 168      =1  /*============================   MemoryGetByte   =============================
+ 169      =1  **  Read one byte from the EEPROM
+ 170      =1  **
+ 171      =1  **  Side effects:
+ 172      =1  **--------------------------------------------------------------------------*/
+ 173      =1  extern BYTE               /*RET Data          */
+ 174      =1  MemoryGetByte(
+ 175      =1    WORD  offset );         /*IN   Application area offset            */
+ 176      =1  
+ 177      =1  /*============================   MemoryPutByte   =============================
+ 178      =1  **  Add one byte to the EEPROM write queue
+ 179      =1  **
+ 180      =1  **  Side effects:
+ 181      =1  **
+ 182      =1  **--------------------------------------------------------------------------*/
+ 183      =1  extern BYTE               /*RET FALSE if write buffer full    */
+ 184      =1  MemoryPutByte(
+ 185      =1    WORD  offset,           /*IN   Application area offset   */
+ 186      =1    BYTE  bData );          /*IN   Data to store             */
+ 187      =1  
+ 188      =1  /*============================   MemoryGetBuffer   =============================
+ 189      =1  **    Read number of bytes from the EEPROM to a RAM buffer
+ 190      =1  **
+ 191      =1  **  Side effects:
+ 192      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 193      =1  **--------------------------------------------------------------------------*/
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 8   
+
+ 194      =1  extern void               /*RET Nothing          */
+ 195      =1  MemoryGetBuffer(
+ 196      =1    WORD  offset,           /*IN   Application area offset   */
+ 197      =1    BYTE  *buffer,          /*IN   Buffer pointer            */
+ 198      =1    BYTE  length );         /*IN   Number of bytes to read  */
+ 199      =1  
+ 200      =1  /*============================   MemoryPutBuffer   =============================
+ 201      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 202      =1  **
+ 203      =1  **  Side effects: Write has been executed when function returns and callback
+ 204      =1  **                is called via a timer max 10ms later
+ 205      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 206      =1  **--------------------------------------------------------------------------*/
+ 207      =1  extern BYTE               /*RET FALSE if the buffer put queue is full          */
+ 208      =1  MemoryPutBuffer(
+ 209      =1    WORD  offset,           /*IN   Application area offset   */
+ 210      =1    BYTE  *buffer,          /*IN   Buffer pointer            */
+ 211      =1    WORD  length,           /*IN   Number of bytes to copy   */
+ 212      =1    VOID_CALLBACKFUNC(func)( void) );  /*IN   Buffer write completed function pointer */
+ 213      =1  
+ 214      =1  
+ 215      =1  /*==========================   ZW_MemoryPutBuffer   ==========================
+ 216      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 217      =1  **
+ 218      =1  **  Side effects: Write has been executed when function returns
+ 219      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 220      =1  **--------------------------------------------------------------------------*/
+ 221      =1  extern BYTE               /*RET FALSE if the buffer put queue is full       */
+ 222      =1  ZW_MemoryPutBuffer(
+ 223      =1    WORD  offset,           /* IN Application area offset   */
+ 224      =1    BYTE  *buffer,          /* IN Buffer pointer            */
+ 225      =1    WORD  length);          /* IN Number of bytes to copy   */
+ 226      =1  
+ 227      =1  
+ 228      =1  /*===========================   MemoryGetStatus   ============================
+ 229      =1  **  Read status from the NVM
+ 230      =1  **
+ 231      =1  **  Side effects:
+ 232      =1  **--------------------------------------------------------------------------*/
+ 233      =1  extern BYTE               /*RET Data FALSE = 0 = OK, TRUE = 1 = read operation disturbed */
+ 234      =1  MemoryGetStatus(void);    /*IN  none          */
+ 235      =1  
+ 236      =1  /*==========================   MemoryClearStatus   ===========================
+ 237      =1  **  Clear status for the NVM
+ 238      =1  **
+ 239      =1  **  Side effects:
+ 240      =1  **--------------------------------------------------------------------------*/
+ 241      =1  extern void               /*RET none          */
+ 242      =1  MemoryClearStatus(void);  /*IN  none          */
+ 243      =1  
+ 244      =1  /*=============================   ZW_memcpy   ===============================
+ 245      =1  **    Copies length bytes from src to dst
+ 246      =1  **
+ 247      =1  **--------------------------------------------------------------------------*/
+ 248      =1  extern void       /* RET  Nothing */
+ 249      =1  __ZW_memcpy(
+ 250      =1    BYTE length,    /* IN   Number of bytes to copy */
+ 251      =1    BYTE *dst,      /* IN   Pointer to destination */
+ 252      =1    BYTE *src);     /* IN   Pointer to source */
+ 253      =1  
+ 254      =1  
+ 255      =1  /*=============================   ZW_memcmp   ===============================
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 9   
+
+ 256      =1  **    Compares length bytes of src and dest
+ 257      =1  **
+ 258      =1  **--------------------------------------------------------------------------*/
+ 259      =1  extern BYTE       /* RET  0 if *src and *dst are equal, else 1 */
+ 260      =1  __ZW_memcmp(
+ 261      =1    BYTE length,    /* IN   Number of bytes to compare */
+ 262      =1    BYTE *dst,      /* IN   Pointer to buffer 1 */
+ 263      =1    BYTE *src);     /* IN   Pointer to buffer 2 */
+ 264      =1  
+ 265      =1  
+ 266      =1  /*===============================   ZW_memset   ==============================
+ 267      =1  **    Fill length bytes in dst with val
+ 268      =1  **
+ 269      =1  **--------------------------------------------------------------------------*/
+ 270      =1  void           /*RET Nothing */
+ 271      =1  __ZW_memset(
+ 272      =1    BYTE val,    /* IN Value to fill buffer with */
+ 273      =1    BYTE length, /* IN Number of bytes to set */
+ 274      =1    BYTE *dst);  /* IN Pointer to buffer to set/fill */
+ 275      =1  
+ 276      =1  
+ 277      =1  #ifdef NVM_IS_EEPROM
+ 285      =1  
+ 286      =1  //#ifdef NVM_IS_FLASH
+ 287      =1  // NVM_IS_FLASH is defined in ZW_nvm_addr.h, which is not included by ZW_mem_api.h
+ 288      =1  // As ZW_nvm_addr.h is a basis-include, it cannot be used by an application.
+ 289      =1  #if defined(ZW_SLAVE_ROUTING) && !defined(ZW_SLAVE_32)
+ 298      =1  
+ 299      =1  #endif /* _ZW_MEM_API_H_ */
+  26          #include <ZW_uart_api.h>
+   1      =1  /***************************************************************************
+   2      =1  *
+   3      =1  * Copyright (c) 2001-2012
+   4      =1  * Sigma Designs, Inc.
+   5      =1  * All Rights Reserved
+   6      =1  *
+   7      =1  *---------------------------------------------------------------------------
+   8      =1  *
+   9      =1  * Description: Interface driver for the 500 Series Z-Wave Single Chip
+  10      =1  *              built-in UART's
+  11      =1  *
+  12      =1  * Author:      Morten Vested Olesen and Jess Christensen
+  13      =1  *
+  14      =1  * Last Changed By:  $Author: jsi $
+  15      =1  * Revision:         $Revision: 30544 $
+  16      =1  * Last Changed:     $Date: 2015-01-09 14:18:09 +0100 (fr, 09 jan 2015) $
+  17      =1  *
+  18      =1  ****************************************************************************/
+  19      =1  #ifndef _ZW_UART_API_H_
+  20      =1  #define _ZW_UART_API_H_
+  21      =1  
+  22      =1  /***************************************************************************/
+  23      =1  /*                              INCLUDE FILES                              */
+  24      =1  /***************************************************************************/
+  25      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 10  
+
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  26      =1  
+  27      =1  /****************************************************************************/
+  28      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  29      =1  /****************************************************************************/
+  30      =1  
+  31      =1  /* Macroes for debug output */
+  32      =1  #define ZW_DEBUG_BAUD_RATE    1152
+  33      =1  
+  34      =1  #ifdef ZW_DEBUG
+  63      =1  #ifdef ZW_DEBUG_USB
+  74      =1  #ifdef ZW_DEBUG_UART0
+  83      =1  #define ZW_DEBUG_INIT(baud)
+  84      =1  #define ZW_DEBUG_SEND_BYTE(bData)
+  85      =1  #define ZW_DEBUG_SEND_NUM(bData)
+  86      =1  #define ZW_DEBUG_SEND_WORD_NUM(bData)
+  87      =1  #define ZW_DEBUG_SEND_NL()
+  88      =1  #define ZW_DEBUG_SEND_STR(STR)
+  89      =1  #define ZW_DEBUG_TX_STATUS()
+  90      =1  #endif /* ZW_DEBUG_UART0*/
+  91      =1  #endif /* ZW_DEBUG_USB */
+  92      =1  #endif /* ZW_DEBUG */
+  93      =1  
+  94      =1  #define ZW_UART0_INIT(baud)        ZW_UART0_init(baud, TRUE, FALSE)
+  95      =1  #define ZW_UART0_SEND_BYTE(bData)  ZW_UART0_tx_send_byte(bData)
+  96      =1  #define ZW_UART0_SEND_NUM(bData)   ZW_UART0_tx_send_num(bData)
+  97      =1  #define ZW_UART0_SEND_DEC(bData)   ZW_UART0_tx_send_dec(bData)
+  98      =1  #define ZW_UART0_REC_STATUS        (ZW_UART0_rx_int_get())
+  99      =1  #define ZW_UART0_REC_BYTE          (ZW_UART0_rx_data_wait_get())
+ 100      =1  #define ZW_UART0_SEND_NL()         ZW_UART0_tx_send_nl()
+ 101      =1  #define ZW_UART0_SEND_STATUS       (ZW_UART0_tx_active_get())
+ 102      =1  #define ZW_UART0_SEND_STR(STR)     (ZW_UART0_tx_send_str(STR))
+ 103      =1  
+ 104      =1  #define ZW_UART_INIT(baud)        ZW_UART1_init(baud, TRUE, FALSE)
+ 105      =1  #define ZW_UART_SEND_BYTE(bData)  ZW_UART1_tx_send_byte(bData)
+ 106      =1  #define ZW_UART_SEND_NUM(bData)   ZW_UART1_tx_send_num(bData)
+ 107      =1  #define ZW_UART_REC_STATUS        (ZW_UART1_rx_int_get())
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 11  
+
+ 108      =1  #define ZW_UART_REC_BYTE          (ZW_UART1_rx_data_wait_get())
+ 109      =1  #define ZW_UART_SEND_NL()         ZW_UART1_tx_send_nl()
+ 110      =1  #define ZW_UART_SEND_STATUS       (ZW_UART1_tx_int_get())
+ 111      =1  #define ZW_UART_SEND_STR(STR)     (ZW_UART1_tx_send_str(STR))
+ 112      =1  
+ 113      =1  #define UART_RX_DMA_STATUS_LOD       0x80
+ 114      =1  #define UART_RX_DMA_STATUS_EOR       0x40
+ 115      =1  #define UART_RX_DMA_STATUS_BUFFULL   0x20
+ 116      =1  #define UART_RX_DMA_STATUS_RUNNING   0x10
+ 117      =1  #define UART_RX_DMA_STATUS_CURBUF1   0x02
+ 118      =1  
+ 119      =1  #define UART_RX_DMA_LOD_INT_EN       0x20
+ 120      =1  #define UART_RX_DMA_SWITCH_COUNT     0x08
+ 121      =1  #define UART_RX_DMA_SWITCH_FULL      0x04
+ 122      =1  #define UART_RX_DMA_SWITCH_EOR       0x01
+ 123      =1  
+ 124      =1  #define UART_TX_DMA_STATUS_SLOW_XRAM 0x80
+ 125      =1  #define UART_TX_DMA_STATUS_RUNNING   0x10
+ 126      =1  
+ 127      =1  /***************************************************************************/
+ 128      =1  /*                              EXPORTED DATA                              */
+ 129      =1  /***************************************************************************/
+ 130      =1  
+ 131      =1  /***************************************************************************/
+ 132      =1  /*                           EXPORTED FUNCTIONS                            */
+ 133      =1  /***************************************************************************/
+ 134      =1  
+ 135      =1  /*===============================   ZW_UART_init   =============================
+ 136      =1  **  Initializes UART0.
+ 137      =1  **  Optionally enables transmit and/or receive, clears the rx and tx interrupt
+ 138      =1  **  flags, and sets the specified baudrate.
+ 139      =1  **
+ 140      =1  **  Side effects:
+ 141      =1  **--------------------------------------------------------------------------*/
+ 142      =1  void             /*RET Nothing */
+ 143      =1  ZW_UART_init(
+ 144      =1    WORD bBaudRate,  /* IN  Baud rate / 100 (e.g. 96 => 9600baud/s, 1152 => 115200baud/s) */
+ 145      =1    BYTE bEnableTx,  /* IN  TRUE: Tx enabled, FALSE: Tx disabled */
+ 146      =1    BYTE bEnableRx); /* IN  TRUE: Rx enabled, FALSE: Rx disabled */
+ 147      =1  
+ 148      =1  /*===============================   ZW_UART0_init   =============================
+ 149      =1  **  Initializes UART0.
+ 150      =1  **  Optionally enables transmit and/or receive, clears the rx and tx interrupt
+ 151      =1  **  flags, and sets the specified baudrate.
+ 152      =1  **
+ 153      =1  **  Side effects:
+ 154      =1  **--------------------------------------------------------------------------*/
+ 155      =1  void             /*RET Nothing */
+ 156      =1  ZW_UART0_init(
+ 157      =1    WORD bBaudRate,  /* IN  Baud rate / 100 (e.g. 96 => 9600baud/s, 1152 => 115200baud/s) */
+ 158      =1    BYTE bEnableTx,  /* IN  TRUE: Tx enabled, FALSE: Tx disabled */
+ 159      =1    BYTE bEnableRx); /* IN  TRUE: Rx enabled, FALSE: Rx disabled */
+ 160      =1  
+ 161      =1  /*==============================   ZW_UART0_INT_ENABLE  =============================
+ 162      =1  **  Enables UART0 interrupt
+ 163      =1  **
+ 164      =1  **    Side effects:
+ 165      =1  **--------------------------------------------------------------------------*/
+ 166      =1  
+ 167      =1  #define ZW_UART0_INT_ENABLE  ES0=1
+ 168      =1  
+ 169      =1  /*==============================   ZW_UART0_INT_DISABLE  =============================
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 12  
+
+ 170      =1  **  Disables UART0 interrupt
+ 171      =1  **
+ 172      =1  **    Side effects:
+ 173      =1  **--------------------------------------------------------------------------*/
+ 174      =1  
+ 175      =1  #define ZW_UART0_INT_DISABLE ES0=0
+ 176      =1  
+ 177      =1  /*===============================   ZW_UART_tx_send_byte   ========================
+ 178      =1  **  Wait until UART0 Tx is idle, then write data byte to UART0 transmit register
+ 179      =1  **
+ 180      =1  **    Side effects: waits until UART0 Tx is idle
+ 181      =1  **--------------------------------------------------------------------------*/
+ 182      =1  void
+ 183      =1  ZW_UART_tx_send_byte(
+ 184      =1    BYTE bData);  /* IN a byte to written to the UART transmit register.*/
+ 185      =1  
+ 186      =1  /*===========================  ZW_UART_tx_send_dec  ==========================
+ 187      =1  **  Converts a byte to a two-digit decimal ASCII representation,
+ 188      =1  **  and transmits it over UART0.
+ 189      =1  **
+ 190      =1  **    Side effects:
+ 191      =1  **
+ 192      =1  **--------------------------------------------------------------------------*/
+ 193      =1  void            /*RET Nothing */
+ 194      =1  ZW_UART_tx_send_dec(
+ 195      =1    BYTE bData);  /* IN data to send */
+ 196      =1  
+ 197      =1  /*===========================  ZW_UART_tx_send_hex  ==========================
+ 198      =1  **  Converts a byte to a two-byte hexadecimal ASCII representation,
+ 199      =1  **  and transmits it over UART0.
+ 200      =1  **
+ 201      =1  **    Side effects:
+ 202      =1  **
+ 203      =1  **--------------------------------------------------------------------------*/
+ 204      =1  #define ZW_UART_tx_send_num ZW_UART_tx_send_hex
+ 205      =1  
+ 206      =1  void            /*RET Nothing */
+ 207      =1  ZW_UART_tx_send_hex(
+ 208      =1    BYTE bData);   /* IN data to send */
+ 209      =1  
+ 210      =1  
+ 211      =1  /*===========================  ZW_UART_tx_send_w_num  ==========================
+ 212      =1  **  Converts a WORD to a 4-byte hexadecimal ASCII representation,
+ 213      =1  **  and transmits it over UART0.
+ 214      =1  **
+ 215      =1  **    Side effects:
+ 216      =1  **
+ 217      =1  **--------------------------------------------------------------------------*/
+ 218      =1  void            /*RET Nothing */
+ 219      =1  ZW_UART_tx_send_w_num(
+ 220      =1    WORD bData);   /* IN data to send */
+ 221      =1  
+ 222      =1  /*============================   ZW_UART_tx_send_str   ========================
+ 223      =1  **  Transmit a null terminated string over UART0.
+ 224      =1  **  The null data is not transmitted.
+ 225      =1  **
+ 226      =1  **    Side effects:
+ 227      =1  **
+ 228      =1  **--------------------------------------------------------------------------*/
+ 229      =1  void          /*RET Nothing */
+ 230      =1  ZW_UART_tx_send_str(
+ 231      =1    BYTE_P str); /* IN String pointer */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 13  
+
+ 232      =1  
+ 233      =1  /*=============================   ZW_UART_send_nl   =========================
+ 234      =1  **  Transmit CR + LF over UART0.
+ 235      =1  **
+ 236      =1  **    Side effects:
+ 237      =1  **
+ 238      =1  **--------------------------------------------------------------------------*/
+ 239      =1  void                /*RET Nothing */
+ 240      =1  ZW_UART_tx_send_nl( void ); /*IN Nothing */
+ 241      =1  
+ 242      =1  /*===============================   ZW_UART_tx_active_get   ========================
+ 243      =1  **  This function checks if the UART0 is sending.
+ 244      =1  **
+ 245      =1  **    Side effects:
+ 246      =1  **--------------------------------------------------------------------------*/
+ 247      =1  
+ 248      =1  BYTE    /* RET zero (0x00): UART0 tx is idle,
+ 249      =1           *     non-zero:  : UART0 tx is active     */
+ 250      =1  ZW_UART_tx_active_get(void);
+ 251      =1  
+ 252      =1  
+ 253      =1  /*===============================   ZW_UART0_rx_int_clear   ========================
+ 254      =1  **  Clear the UART0 Rx interrupt flag
+ 255      =1  **
+ 256      =1  **    Side effects:
+ 257      =1  **--------------------------------------------------------------------------*/
+ 258      =1  void
+ 259      =1  ZW_UART0_rx_int_clear(void);
+ 260      =1  
+ 261      =1  /*=============================   ZW_UART0_tx_int_clear   ========================
+ 262      =1  **  Clear the UART0 Tx interrupt flag
+ 263      =1  **
+ 264      =1  **    Side effects:
+ 265      =1  **--------------------------------------------------------------------------*/
+ 266      =1  void
+ 267      =1  ZW_UART0_tx_int_clear(void);
+ 268      =1  
+ 269      =1  /*===============================   ZW_UART0_rx_data_wait_get   ========================
+ 270      =1  **  Read the content of the UART0 receive register
+ 271      =1  **
+ 272      =1  **    Side effects:
+ 273      =1  **--------------------------------------------------------------------------*/
+ 274      =1  BYTE    /* RET the content of the receive register*/
+ 275      =1  ZW_UART0_rx_data_wait_get(void);
+ 276      =1  
+ 277      =1  /*===============================   ZW_UART0_rx_data_get   ========================
+ 278      =1  **  Read the content of the UART0 receive register
+ 279      =1  **
+ 280      =1  **    Side effects:
+ 281      =1  **--------------------------------------------------------------------------*/
+ 282      =1  
+ 283      =1  BYTE    /* RET the content of the receive register*/
+ 284      =1  ZW_UART0_rx_data_get(void);
+ 285      =1  
+ 286      =1  /*===============================   ZW_UART0_tx_data_set   ========================
+ 287      =1  **  Write data byte to UART0 transmit register
+ 288      =1  **
+ 289      =1  **    Side effects:
+ 290      =1  **--------------------------------------------------------------------------*/
+ 291      =1  void
+ 292      =1  ZW_UART0_tx_data_set(
+ 293      =1    BYTE txByte);  /* IN a byte to written to the UART transmit register.*/
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 14  
+
+ 294      =1  
+ 295      =1  /*===============================   ZW_UART0_tx_send_byte   ========================
+ 296      =1  **  Wait until UART0 Tx is idle, then write data byte to UART0 transmit register
+ 297      =1  **
+ 298      =1  **    Side effects: waits until UART0 Tx is idle
+ 299      =1  **--------------------------------------------------------------------------*/
+ 300      =1  void
+ 301      =1  ZW_UART0_tx_send_byte(
+ 302      =1    BYTE bData);  /* IN a byte to written to the UART transmit register.*/
+ 303      =1  
+ 304      =1  /*===============================   ZW_UART0_rx_enable   ========================
+ 305      =1  **  Enable the UART receiver and reserve IO.
+ 306      =1  **
+ 307      =1  **    Side effects:
+ 308      =1  **--------------------------------------------------------------------------*/
+ 309      =1  void
+ 310      =1  ZW_UART0_rx_enable(
+ 311      =1    BYTE bState); /* IN  TRUE: enables UART0 rx function, FALSE: disables UART0 rx function */
+ 312      =1  
+ 313      =1  /*===============================   ZW_UART0_tx_enable   ========================
+ 314      =1  **  Enable the UART transmitter and reserve IO.
+ 315      =1  **
+ 316      =1  **    Side effects:
+ 317      =1  **--------------------------------------------------------------------------*/
+ 318      =1  void
+ 319      =1  ZW_UART0_tx_enable(
+ 320      =1    BYTE bState); /* IN  TRUE: enables UART0 tx function, FALSE: disables UART0 tx function */
+ 321      =1  
+ 322      =1  
+ 323      =1  /*===============================   ZW_UART0_tx_int_get   ========================
+ 324      =1  **  This function checks if the UART0 has sent a byte.
+ 325      =1  **
+ 326      =1  **    Side effects:
+ 327      =1  **--------------------------------------------------------------------------*/
+ 328      =1  
+ 329      =1  BYTE    /* RET zero (0x00): tx interrupt flag is not set,
+ 330      =1           *     non-zero:  : tx interrupt flag is set      */
+ 331      =1  ZW_UART0_tx_int_get(void);
+ 332      =1  
+ 333      =1  /*===============================   ZW_UART0_tx_active_get   ========================
+ 334      =1  **  This function checks if the UART0 is sending.
+ 335      =1  **
+ 336      =1  **    Side effects:
+ 337      =1  **--------------------------------------------------------------------------*/
+ 338      =1  
+ 339      =1  BYTE    /* RET zero (0x00): UART0 tx is idle,
+ 340      =1           *     non-zero:  : UART0 tx is active     */
+ 341      =1  ZW_UART0_tx_active_get(void);
+ 342      =1  
+ 343      =1  /*===============================   ZW_UART0_rx_int_get   ========================
+ 344      =1  **  This function checks if the UART0 has received a byte.
+ 345      =1  **
+ 346      =1  **    Side effects:
+ 347      =1  **--------------------------------------------------------------------------*/
+ 348      =1  BYTE    /* RET zero (0x00): rx interrupt flag is not set,
+ 349      =1           *     non-zero:  : rx interrupt flag is set      */
+ 350      =1  ZW_UART0_rx_int_get(void);
+ 351      =1  
+ 352      =1  
+ 353      =1  /*===========================  ZW_UART0_tx_send_dec  ==========================
+ 354      =1  **  Converts a byte to a two-digit decimal ASCII representation,
+ 355      =1  **  and transmits it over UART0.
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 15  
+
+ 356      =1  **
+ 357      =1  **    Side effects:
+ 358      =1  **
+ 359      =1  **--------------------------------------------------------------------------*/
+ 360      =1  void            /*RET Nothing */
+ 361      =1  ZW_UART0_tx_send_dec(
+ 362      =1    BYTE bData);  /* IN data to send */
+ 363      =1  
+ 364      =1  /*===========================  ZW_UART0_tx_send_hex  ==========================
+ 365      =1  **  Converts a byte to a two-byte hexadecimal ASCII representation,
+ 366      =1  **  and transmits it over UART0.
+ 367      =1  **
+ 368      =1  **    Side effects:
+ 369      =1  **
+ 370      =1  **--------------------------------------------------------------------------*/
+ 371      =1  #define ZW_UART0_tx_send_num ZW_UART0_tx_send_hex
+ 372      =1  
+ 373      =1  void            /*RET Nothing */
+ 374      =1  ZW_UART0_tx_send_hex(
+ 375      =1    BYTE bData);   /* IN data to send */
+ 376      =1  
+ 377      =1  
+ 378      =1  /*===========================  ZW_UART0_tx_send_w_num  ==========================
+ 379      =1  **  Converts a WORD to a 4-byte hexadecimal ASCII representation,
+ 380      =1  **  and transmits it over UART0.
+ 381      =1  **
+ 382      =1  **    Side effects:
+ 383      =1  **
+ 384      =1  **--------------------------------------------------------------------------*/
+ 385      =1  void            /*RET Nothing */
+ 386      =1  ZW_UART0_tx_send_w_num(
+ 387      =1    WORD bData);   /* IN data to send */
+ 388      =1  
+ 389      =1  /*============================   ZW_UART0_tx_send_str   ========================
+ 390      =1  **  Transmit a null terminated string over UART0.
+ 391      =1  **  The null data is not transmitted.
+ 392      =1  **
+ 393      =1  **    Side effects:
+ 394      =1  **
+ 395      =1  **--------------------------------------------------------------------------*/
+ 396      =1  void          /*RET Nothing */
+ 397      =1  ZW_UART0_tx_send_str(
+ 398      =1    BYTE_P str); /* IN String pointer */
+ 399      =1  
+ 400      =1  /*=============================   ZW_UART0_send_nl   =========================
+ 401      =1  **  Transmit CR + LF over UART0.
+ 402      =1  **
+ 403      =1  **    Side effects:
+ 404      =1  **
+ 405      =1  **--------------------------------------------------------------------------*/
+ 406      =1  void                /*RET Nothing */
+ 407      =1  ZW_UART0_tx_send_nl( void ); /*IN Nothing */
+ 408      =1  
+ 409      =1  
+ 410      =1  /*===============================   ZW_UART1_init   =============================
+ 411      =1  **  Initializes UART1.
+ 412      =1  **  Optionally enables transmit and/or receive, clears the rx and tx interrupt
+ 413      =1  **  flags, and sets the specified baudrate.
+ 414      =1  **
+ 415      =1  **  Side effects:
+ 416      =1  **--------------------------------------------------------------------------*/
+ 417      =1  void             /*RET Nothing */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 16  
+
+ 418      =1  ZW_UART1_init(
+ 419      =1    WORD bBaudRate,  /* IN  Baud rate / 100 (e.g. 96 => 9600baud/s, 1152 => 115200baud/s) */
+ 420      =1    BYTE bEnableTx,  /* IN  TRUE: Tx enabled, FALSE: Tx disabled */
+ 421      =1    BYTE bEnableRx); /* IN  TRUE: Rx enabled, FALSE: Rx disabled */
+ 422      =1  
+ 423      =1  /*==============================   ZW_UART1_INT_ENABLE  =============================
+ 424      =1  **  Enables UART0 interrupt
+ 425      =1  **
+ 426      =1  **    Side effects:
+ 427      =1  **--------------------------------------------------------------------------*/
+ 428      =1  
+ 429      =1  #define ZW_UART1_INT_ENABLE  ES1=1
+ 430      =1  
+ 431      =1  /*==============================   ZW_UART1_INT_DISABLE  =============================
+ 432      =1  **  Disables UART0 interrupt
+ 433      =1  **
+ 434      =1  **    Side effects:
+ 435      =1  **--------------------------------------------------------------------------*/
+ 436      =1  
+ 437      =1  #define ZW_UART1_INT_DISABLE ES1=0
+ 438      =1  
+ 439      =1  /*===============================   ZW_UART1_rx_int_clear   ========================
+ 440      =1  **  Clear the UART1 Rx interrupt flag
+ 441      =1  **
+ 442      =1  **    Side effects:
+ 443      =1  **--------------------------------------------------------------------------*/
+ 444      =1  void
+ 445      =1  ZW_UART1_rx_int_clear(void);
+ 446      =1  
+ 447      =1  /*=============================   ZW_UART1_tx_int_clear   ========================
+ 448      =1  **  Clear the UART1 Tx interrupt flag
+ 449      =1  **
+ 450      =1  **    Side effects:
+ 451      =1  **--------------------------------------------------------------------------*/
+ 452      =1  void
+ 453      =1  ZW_UART1_tx_int_clear(void);
+ 454      =1  
+ 455      =1  /*===============================   ZW_UART1_rx_data_wait_get   ========================
+ 456      =1  **  Read the content of the UART1 receive register
+ 457      =1  **
+ 458      =1  **    Side effects:
+ 459      =1  **--------------------------------------------------------------------------*/
+ 460      =1  BYTE    /* RET the content of the receive register*/
+ 461      =1  ZW_UART1_rx_data_wait_get(void);
+ 462      =1  
+ 463      =1  /*===============================   ZW_UART1_rx_data_get   ========================
+ 464      =1  **  Read the content of the UART1 receive register
+ 465      =1  **
+ 466      =1  **    Side effects:
+ 467      =1  **--------------------------------------------------------------------------*/
+ 468      =1  
+ 469      =1  BYTE    /* RET the content of the receive register*/
+ 470      =1  ZW_UART1_rx_data_get(void);
+ 471      =1  
+ 472      =1  /*===============================   ZW_UART1_tx_data_set   ========================
+ 473      =1  **  Write data byte to UART1 transmit register
+ 474      =1  **
+ 475      =1  **    Side effects:
+ 476      =1  **--------------------------------------------------------------------------*/
+ 477      =1  void
+ 478      =1  ZW_UART1_tx_data_set(
+ 479      =1    BYTE txByte);  /* IN a byte to written to the UART transmit register.*/
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 17  
+
+ 480      =1  
+ 481      =1  /*===============================   ZW_UART1_tx_send_byte   ========================
+ 482      =1  **  Wait until UART1 Tx is idle, then write data byte to UART1 transmit register
+ 483      =1  **
+ 484      =1  **    Side effects: waits until UART1 Tx is idle
+ 485      =1  **--------------------------------------------------------------------------*/
+ 486      =1  void
+ 487      =1  ZW_UART1_tx_send_byte(
+ 488      =1    BYTE bData);  /* IN a byte to written to the UART transmit register.*/
+ 489      =1  
+ 490      =1  /*===============================   ZW_UART1_rx_enable   ========================
+ 491      =1  **  Enable the UART receiver and reserve IO.
+ 492      =1  **
+ 493      =1  **    Side effects:
+ 494      =1  **--------------------------------------------------------------------------*/
+ 495      =1  void
+ 496      =1  ZW_UART1_rx_enable(
+ 497      =1    BYTE bState); /* IN  TRUE: enables UART1 rx function, FALSE: disables UART1 rx function */
+ 498      =1  
+ 499      =1  /*===============================   ZW_UART1_tx_enable   ========================
+ 500      =1  **  Enable the UART transmitter and reserve IO.
+ 501      =1  **
+ 502      =1  **    Side effects:
+ 503      =1  **--------------------------------------------------------------------------*/
+ 504      =1  void
+ 505      =1  ZW_UART1_tx_enable(
+ 506      =1    BYTE bState); /* IN  TRUE: enables UART1 tx function, FALSE: disables UART1 tx function */
+ 507      =1  
+ 508      =1  
+ 509      =1  /*===============================   ZW_UART1_tx_int_get   ========================
+ 510      =1  **  This function checks if the UART1 has sent a byte.
+ 511      =1  **
+ 512      =1  **    Side effects:
+ 513      =1  **--------------------------------------------------------------------------*/
+ 514      =1  
+ 515      =1  BYTE    /* RET zero (0x00): tx interrupt flag is not set,
+ 516      =1           *     non-zero:  : tx interrupt flag is set      */
+ 517      =1  ZW_UART1_tx_int_get(void);
+ 518      =1  
+ 519      =1  /*===============================   ZW_UART1_tx_active_get   ========================
+ 520      =1  **  This function checks if the UART1 is sending.
+ 521      =1  **
+ 522      =1  **    Side effects:
+ 523      =1  **--------------------------------------------------------------------------*/
+ 524      =1  
+ 525      =1  BYTE    /* RET zero (0x00): UART1 tx is idle,
+ 526      =1           *     non-zero:  : UART1 tx is active     */
+ 527      =1  ZW_UART1_tx_active_get(void);
+ 528      =1  
+ 529      =1  
+ 530      =1  /*===============================   ZW_UART1_rx_int_get   ========================
+ 531      =1  **  This function checks if the UART1 has received a byte.
+ 532      =1  **
+ 533      =1  **    Side effects:
+ 534      =1  **--------------------------------------------------------------------------*/
+ 535      =1  BYTE    /* RET zero (0x00): rx interrupt flag is not set,
+ 536      =1           *     non-zero:  : rx interrupt flag is set      */
+ 537      =1  ZW_UART1_rx_int_get(void);
+ 538      =1  
+ 539      =1  
+ 540      =1  /*===========================  ZW_UART1_tx_send_num  ==========================
+ 541      =1  **  Converts a byte to a two-byte hexadecimal ASCII representation,
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 18  
+
+ 542      =1  **  and transmits it over UART1.
+ 543      =1  **
+ 544      =1  **
+ 545      =1  **    Side effects:
+ 546      =1  **
+ 547      =1  **--------------------------------------------------------------------------*/
+ 548      =1  #define ZW_UART1_tx_send_num ZW_UART1_tx_send_hex
+ 549      =1  
+ 550      =1  void            /*RET Nothing */
+ 551      =1  ZW_UART1_tx_send_hex(BYTE bData);   /* IN data to send */
+ 552      =1  
+ 553      =1  /*===========================  ZW_UART1_tx_send_num  ==========================
+ 554      =1  **  Converts a WORD to a 4-byte hexadecimal ASCII representation,
+ 555      =1  **  and transmits it over UART1.
+ 556      =1  **
+ 557      =1  **    Side effects:
+ 558      =1  **
+ 559      =1  **--------------------------------------------------------------------------*/
+ 560      =1  void            /*RET Nothing */
+ 561      =1  ZW_UART1_tx_send_w_num(
+ 562      =1    WORD bData);   /* IN data to send */
+ 563      =1  
+ 564      =1  /*============================   ZW_UART1_tx_send_str   ========================
+ 565      =1  **  Transmit a null terminated string over UART1.
+ 566      =1  **  The null data is not transmitted.
+ 567      =1  **
+ 568      =1  **    Side effects:
+ 569      =1  **
+ 570      =1  **--------------------------------------------------------------------------*/
+ 571      =1  void          /*RET Nothing */
+ 572      =1  ZW_UART1_tx_send_str(BYTE_P str); /* IN String pointer */
+ 573      =1  
+ 574      =1  /*=============================   ZW_UART1_send_nl   =========================
+ 575      =1  **  Transmit CR + LF over UART1.
+ 576      =1  **
+ 577      =1  **    Side effects:
+ 578      =1  **
+ 579      =1  **--------------------------------------------------------------------------*/
+ 580      =1  void                /*RET Nothing */
+ 581      =1  ZW_UART1_tx_send_nl( void ); /*IN Nothing */
+ 582      =1  
+ 583      =1  
+ 584      =1  /*--------------------------------------------------------------------------
+ 585      =1  **--------------------------------------------------------------------------
+ 586      =1  **
+ 587      =1  **  WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING
+ 588      =1  
+ 589      =1  ** The following API calls are obsolete and should NOT be used.
+ 590      =1  ** The API calls will be removed in a later developers kit release.
+ 591      =1  **
+ 592      =1  **--------------------------------------------------------------------------
+ 593      =1  **--------------------------------------------------------------------------*/
+ 594      =1  
+ 595      =1  /*===============================   ZW_UART0_tx_dma_int_byte_count  ========================
+ 596      =1  **  Set interrupt tx byte count
+ 597      =1  **
+ 598      =1  **  Parameters
+ 599      =1  **
+ 600      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed to the UART
+ 601      =1  **                    Disabled when set to 0x00 which is default after reset
+ 602      =1  **   Side effects:
+ 603      =1  **--------------------------------------------------------------------------*/
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 19  
+
+ 604      =1  void                    /*RET Nothing */
+ 605      =1  ZW_UART0_tx_dma_int_byte_count( BYTE bByteCount);   /*IN Number of tx'ed bytes */
+ 606      =1  
+ 607      =1  /*===============================   ZW_UART0_tx_dma_inter_byte_delay  ========================
+ 608      =1  **  Set Tx inter byte delay
+ 609      =1  **  Parameters
+ 610      =1  **
+ 611      =1  **   bDelay:   IN Sets the inter byte delay 0x00 no delay (default after reset)
+ 612      =1  **                                          0x01  125ns delay
+ 613      =1  **                                          0x02  250ns delay
+ 614      =1  **                                                 :
+ 615      =1  **                                          0x0F 1875ns delay
+ 616      =1  **   Side effects:
+ 617      =1  **--------------------------------------------------------------------------*/
+ 618      =1  void                    /*RET Nothing */
+ 619      =1  ZW_UART0_tx_dma_inter_byte_delay( BYTE bDelay);   /*IN inter byte delay */
+ 620      =1  
+ 621      =1  /*===============================   ZW_UART0_tx_dma_data  ========================
+ 622      =1  **  Set buffer address and length and then start UART0 DMA
+ 623      =1  **  Parameters
+ 624      =1  **
+ 625      =1  **   pbAddress:  IN pointer to Tx buffer in lower 4kB XRAM
+ 626      =1  **   bBufferLen: IN length of Tx buffer in bytes
+ 627      =1  **
+ 628      =1  **   Side effects:
+ 629      =1  **       Discards any ongoing UART TX DMA process
+ 630      =1  **--------------------------------------------------------------------------*/
+ 631      =1  void                    /*RET Nothing */
+ 632      =1  ZW_UART0_tx_dma_data( XBYTE *pbAddress,    /*IN buffer base address */
+ 633      =1                        BYTE bBufferLen); /*IN buffer len */
+ 634      =1  
+ 635      =1  /*===============================   ZW_UART0_tx_dma_status  ========================
+ 636      =1  **  If the UART0 DMA process is ongoing this function Returns the status of this ongoing
+ 637      =1  **  process. Returns the status of the latest UART0 DMA process if the DMA has stopped.
+ 638      =1  **
+ 639      =1  **  Returned values:
+ 640      =1  **       UART_TX_DMA_STATUS_SLOW_XRAM: DMA can not keep up with configured inter byte
+ 641      =1  **                                     process because of congestion in XRAM access
+ 642      =1  **       UART_TX_DMA_STATUS_RUNNING:   The DMA is transferring data to UART0
+ 643      =1  **
+ 644      =1  **  Parameters: None
+ 645      =1  **
+ 646      =1  **   Side effects:
+ 647      =1  **--------------------------------------------------------------------------*/
+ 648      =1  BYTE                    /*RET status */
+ 649      =1  ZW_UART0_tx_dma_status(void); /*IN Nothing */
+ 650      =1  
+ 651      =1  /*===============================   ZW_UART0_tx_dma_bytes_transferred  ========================
+ 652      =1  **  Returns the number of bytes that has been transferred to UART0 from XRAM for the ongoing DMA
+ 653      =1  **  process. If no transfer is ongoing the number of bytes that has been transferred to UART0
+ 654      =1  **  from XRAM from the latest process is returned.
+ 655      =1  **
+ 656      =1  **  Parameters: None
+ 657      =1  **
+ 658      =1  **   Side effects:
+ 659      =1  **--------------------------------------------------------------------------*/
+ 660      =1  BYTE                    /*RET bytes transferred */
+ 661      =1  ZW_UART0_tx_dma_bytes_transferred(void); /*IN Nothing */
+ 662      =1  
+ 663      =1  /*===============================   ZW_UART0_tx_dma_cancel  ========================
+ 664      =1  **  Cancels any ongoing DMA process and brings UART TX DMA to idle state
+ 665      =1  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 20  
+
+ 666      =1  **  Parameters: None
+ 667      =1  **
+ 668      =1  **   Side effects:
+ 669      =1  **--------------------------------------------------------------------------*/
+ 670      =1  void                    /*RET nothing */
+ 671      =1  ZW_UART0_tx_dma_cancel(void); /*IN Nothing */
+ 672      =1  
+ 673      =1  
+ 674      =1  
+ 675      =1  /*===============================   ZW_UART0_rx_dma_init  ===============================
+ 676      =1  **  Initialize the buffers and setup for the UART0 Rx DMA
+ 677      =1  **
+ 678      =1  **  Parameters
+ 679      =1  **     pbAddress:  IN pointer to the base address of the two Rx buffers
+ 680      =1  **     bBufLength: IN length of UART0 RX Buffer - must be greater than 0
+ 681      =1  **     bBitMask:   IN bit mask contains the setting of the Rx DMA
+ 682      =1  **                      UART_RX_DMA_LOD_INT_EN    Enable Loss Of Data interrupt
+ 683      =1  **                      UART_RX_DMA_SWITCH_COUNT  Switch buffer when byte count is reached
+ 684      =1  **                      UART_RX_DMA_SWITCH_FULL   Switch buffer when buffer full
+ 685      =1  **                      UART_RX_DMA_SWITCH_EOR    Switch buffer when EOR is received
+ 686      =1  **
+ 687      =1  **    Side effects:
+ 688      =1  **       Discards any ongoing UART RX DMA process
+ 689      =1  **       Clears status information
+ 690      =1  **-------------------------------------------------------------------------------------*/
+ 691      =1  void                    /*RET Nothing */
+ 692      =1  ZW_UART0_rx_dma_init( XBYTE *pbAddress,   /* IN pointer to base address of RX buffers */
+ 693      =1                        BYTE bBufLength, /* IN byte length of each of the two buffers*/
+ 694      =1                        BYTE bBitMask);  /* IN see above */
+ 695      =1  
+ 696      =1  /*===============================   ZW_UART0_rx_dma_int_byte_count  ===============================
+ 697      =1  **  Set interrupt rx byte count. A value of 0x00 means disabled
+ 698      =1  **
+ 699      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed from the UART
+ 700      =1  **                  Disabled when set to 0x00
+ 701      =1  **    Side effects:
+ 702      =1  **-------------------------------------------------------------------------------------*/
+ 703      =1  void                    /*RET Nothing */
+ 704      =1  ZW_UART0_rx_dma_int_byte_count(BYTE bByteCount); /*IN */
+ 705      =1  
+ 706      =1  
+ 707      =1  /*===============================   ZW_UART0_rx_dma_status  ========================
+ 708      =1  **  If the UART0 RX DMA process is ongoing this function returns the status of this ongoing
+ 709      =1  **  process. Returns the status of the latest UART0 RX DMA process if the DMA has stopped.
+ 710      =1  **
+ 711      =1  **  Returned values:
+ 712      =1  **       UART_RX_DMA_STATUS_EOR:     The DMA switched RX buffer because it has
+ 713      =1  **                                   recieved an End of Record char
+ 714      =1  **       UART_RX_DMA_STATUS_LOD:     DMA can not keep up with the speed of the incomming data
+ 715      =1  **       UART_RX_DMA_STATUS_CURBUF1: Set when the UART0 RX DMA currently is transferring data
+ 716      =1  **                                   from buffer 1. When cleared the UART0 RX DMA currently is
+ 717      =1  **                                   transferring data from buffer 0
+ 718      =1  **       UART_RX_DMA_STATUS_BUFFULL: Set when a buffer has been filled to the limit
+ 719      =1  **       UART_RX_DMA_STATUS_RUNNING: The DMA is enabled
+ 720      =1  **
+ 721      =1  **  Parameters: None
+ 722      =1  **
+ 723      =1  **   Side effects:
+ 724      =1  **--------------------------------------------------------------------------*/
+ 725      =1  BYTE                    /*RET status */
+ 726      =1  ZW_UART0_rx_dma_status(void); /*IN Nothing */
+ 727      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 21  
+
+ 728      =1  /*===============================   ZW_UART0_rx_dma_bytes_transferred  ========================
+ 729      =1  **  Returns the number of bytes that has been transferred to UART0 to XRAM for the ongoing DMA
+ 730      =1  **  process.
+ 731      =1  **
+ 732      =1  **  Parameters: None
+ 733      =1  **
+ 734      =1  **   Side effects:
+ 735      =1  **--------------------------------------------------------------------------*/
+ 736      =1  BYTE                    /*RET bytes transferred */
+ 737      =1  ZW_UART0_rx_dma_bytes_transferred(void); /*IN Nothing */
+ 738      =1  
+ 739      =1  /*===============================   ZW_UART0_rx_dma_cancel  ========================
+ 740      =1  **  Cancels any ongoing DMA process and brings UART RX DMA to idle state
+ 741      =1  **
+ 742      =1  **  Parameters: None
+ 743      =1  **
+ 744      =1  **   Side effects:
+ 745      =1  **--------------------------------------------------------------------------*/
+ 746      =1  void                    /*RET nothing */
+ 747      =1  ZW_UART0_rx_dma_cancel(void); /*IN Nothing */
+ 748      =1  
+ 749      =1  /*=============================   ZW_UART0_rx_dma_eor_set =======================
+ 750      =1  **
+ 751      =1  **  Sets the End of Record (EoR) character. The EoR function makes it possible
+ 752      =1  **  to switch receive buffer when a certain character is recieved, .e.g Linefeed.
+ 753      =1  **  UART_RX_DMA_SWITCH_EOR must have been set in the ZW_UART0_rx_dma_init call
+ 754      =1  **  for the function to be enabled.
+ 755      =1  **
+ 756      =1  **  Parameters:
+ 757      =1  **
+ 758      =1  **   Side effects:
+ 759      =1  **--------------------------------------------------------------------------*/
+ 760      =1  void                    /*RET nothing */
+ 761      =1  ZW_UART0_rx_dma_eor_set(BYTE bChar);  /*IN EoR character */
+ 762      =1  
+ 763      =1  /*=====================   ZW_UART0_rx_dma_byte_count_enable  =====================
+ 764      =1  **
+ 765      =1  **  Enables or disabled the function switch buffer when a certain byte count is
+ 766      =1  **  reached
+ 767      =1  **
+ 768      =1  **  Parameters: None
+ 769      =1  **
+ 770      =1  **   Side effects:
+ 771      =1  **--------------------------------------------------------------------------*/
+ 772      =1  void                    /*RET nothing */
+ 773      =1  ZW_UART0_rx_dma_byte_count_enable(BYTE bEnable); /* IN TRUE bute count switch is enabled */
+ 774      =1  
+ 775      =1  
+ 776      =1  
+ 777      =1  
+ 778      =1  
+ 779      =1  /*===============================   ZW_UART1_tx_dma_int_byte_count  ========================
+ 780      =1  **  Set interrupt tx byte count
+ 781      =1  **
+ 782      =1  **  Parameters
+ 783      =1  **
+ 784      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed to the UART
+ 785      =1  **                    Disabled when set to 0x00
+ 786      =1  **   Side effects:
+ 787      =1  **--------------------------------------------------------------------------*/
+ 788      =1  void                    /*RET Nothing */
+ 789      =1  ZW_UART1_tx_dma_int_byte_count( BYTE bByteCount);   /*IN Number of tx'ed bytes */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 22  
+
+ 790      =1  
+ 791      =1  /*===============================   ZW_UART1_tx_dma_inter_byte_delay  ========================
+ 792      =1  **  Set Tx inter byte delay
+ 793      =1  **  Parameters
+ 794      =1  **
+ 795      =1  **   bDelay:   IN Sets the inter byte delay 0x00 no delay (default after reset)
+ 796      =1  **                                          0x01  125ns delay
+ 797      =1  **                                          0x02  250ns delay
+ 798      =1  **                                                 :
+ 799      =1  **                                          0x0F 1875ns delay
+ 800      =1  **   Side effects:
+ 801      =1  **--------------------------------------------------------------------------*/
+ 802      =1  void                    /*RET Nothing */
+ 803      =1  ZW_UART1_tx_dma_inter_byte_delay( BYTE bDelay);   /*IN inter byte delay */
+ 804      =1  
+ 805      =1  /*===============================   ZW_UART1_tx_dma_data  ========================
+ 806      =1  **  Set buffer address and length and then start UART1 DMA
+ 807      =1  **  Parameters
+ 808      =1  **
+ 809      =1  **   pbAddress:  IN pointer to Tx buffer in lower 4kB XRAM
+ 810      =1  **   bBufferLen: IN length of Tx buffer in bytes
+ 811      =1  **
+ 812      =1  **   Side effects:
+ 813      =1  **       Discards any ongoing UART TX DMA process
+ 814      =1  **--------------------------------------------------------------------------*/
+ 815      =1  void                    /*RET Nothing */
+ 816      =1  ZW_UART1_tx_dma_data( XBYTE *pbAddress,    /*IN buffer base address */
+ 817      =1                        BYTE bBufferLen); /*IN buffer len */
+ 818      =1  
+ 819      =1  /*===============================   ZW_UART1_tx_dma_status  ========================
+ 820      =1  **  If the UART1 DMA process is ongoing this function Returns the status of this ongoing
+ 821      =1  **  process. Returns the status of the latest UART1 DMA process if the DMA has stopped.
+ 822      =1  **
+ 823      =1  **  Returned values:
+ 824      =1  **       UART_TX_DMA_STATUS_SLOW_XRAM: DMA can not keep up with configured inter byte
+ 825      =1  **                                     process because of congestion in XRAM access
+ 826      =1  **       UART_TX_DMA_STATUS_RUNNING:   The DMA is transferring data to UART1
+ 827      =1  **
+ 828      =1  **  Parameters: None
+ 829      =1  **
+ 830      =1  **   Side effects:
+ 831      =1  **--------------------------------------------------------------------------*/
+ 832      =1  BYTE                    /*RET status */
+ 833      =1  ZW_UART1_tx_dma_status(void); /*IN Nothing */
+ 834      =1  
+ 835      =1  /*===============================   ZW_UART1_tx_dma_bytes_transferred  ========================
+ 836      =1  **  Returns the number of bytes that has been transferred to UART1 from XRAM for the ongoing DMA
+ 837      =1  **  process. If no transfer is ongoing the number of bytes that has been transferred to UART1
+ 838      =1  **  from XRAM from the latest process is returned.
+ 839      =1  **
+ 840      =1  **  Parameters: None
+ 841      =1  **
+ 842      =1  **   Side effects:
+ 843      =1  **--------------------------------------------------------------------------*/
+ 844      =1  BYTE                    /*RET bytes transferred */
+ 845      =1  ZW_UART1_tx_dma_bytes_transferred(void); /*IN Nothing */
+ 846      =1  
+ 847      =1  /*===============================   ZW_UART1_tx_dma_cancel  ========================
+ 848      =1  **  Cancels any ongoing DMA process and brings UART TX DMA to idle state
+ 849      =1  **
+ 850      =1  **  Parameters: None
+ 851      =1  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 23  
+
+ 852      =1  **   Side effects:
+ 853      =1  **--------------------------------------------------------------------------*/
+ 854      =1  void                    /*RET nothing */
+ 855      =1  ZW_UART1_tx_dma_cancel(void); /*IN Nothing */
+ 856      =1  
+ 857      =1  /*===============================   ZW_UART1_rx_dma_init  ===============================
+ 858      =1  **  Initialize the buffers and setup for the UART1 Rx DMA
+ 859      =1  **
+ 860      =1  **  Parameters
+ 861      =1  **     pbAddress:  IN pointer to the base address of the two Rx buffers
+ 862      =1  **     bBufLength: IN length of UART1 RX Buffer - must be greater than 0
+ 863      =1  **     bBitMap:    IN bit mask contains the setting of the Rx DMA
+ 864      =1  **                      UART_RX_DMA_LOD_INT_EN    Enable Loss Of Data interrupt
+ 865      =1  **                      UART_RX_DMA_SWITCH_COUNT  Switch buffer when byte count is reached
+ 866      =1  **                      UART_RX_DMA_SWITCH_FULL   Switch buffer when buffer full
+ 867      =1  **
+ 868      =1  **    Side effects:
+ 869      =1  **       Discards any ongoing UART RX DMA process
+ 870      =1  **       Clears status information
+ 871      =1  **-------------------------------------------------------------------------------------*/
+ 872      =1  void                    /*RET Nothing */
+ 873      =1  ZW_UART1_rx_dma_init( XBYTE *pbAddress, /*IN pointer to base address of RX buffers */
+ 874      =1                        BYTE bBufLength, /* IN buffer byte length */
+ 875      =1                        BYTE bBitMap); /*IN the rx dmaBuf's threshold value of the almost full flag*/
+ 876      =1  
+ 877      =1  /*===============================   ZW_UART1_rx_dma_int_byte_count  ===============================
+ 878      =1  **  Set interrupt rx byte count. A value of 0x00 means disabled
+ 879      =1  **
+ 880      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed from the UART
+ 881      =1  **                  Disabled when set to 0x00
+ 882      =1  **    Side effects:
+ 883      =1  **-------------------------------------------------------------------------------------*/
+ 884      =1  void                    /*RET Nothing */
+ 885      =1  ZW_UART1_rx_dma_int_byte_count(BYTE bByteCount); /*IN */
+ 886      =1  
+ 887      =1  /*===============================   ZW_UART1_rx_dma_status  ========================
+ 888      =1  **  If the UART1 RX DMA process is ongoing this function returns the status of this ongoing
+ 889      =1  **  process. Returns the status of the latest UART1 RX DMA process if the DMA has stopped.
+ 890      =1  **
+ 891      =1  **  Returned values:
+ 892      =1  **       UART_RX_DMA_STATUS_EOR:     The DMA switched RX buffer because it has
+ 893      =1  **                                   recieved an End of Record char
+ 894      =1  **       UART_RX_DMA_STATUS_LOD:     DMA can not keep up with the speed of the incomming data
+ 895      =1  **       UART_RX_DMA_STATUS_CURBUF1: Set when the UART1 RX DMA currently is transferring data
+ 896      =1  **                                   from buffer 1. When cleared the UART1 RX DMA currently is
+ 897      =1  **                                   transferring data from buffer 0
+ 898      =1  **       UART_RX_DMA_STATUS_BUFFULL: Set when a buffer has been filled to the limit
+ 899      =1  **       UART_RX_DMA_STATUS_RUNNING: The DMA is enabled
+ 900      =1  **
+ 901      =1  **  Parameters: None
+ 902      =1  **
+ 903      =1  **   Side effects:
+ 904      =1  **--------------------------------------------------------------------------*/
+ 905      =1  BYTE                    /*RET status */
+ 906      =1  ZW_UART1_rx_dma_status(void); /*IN Nothing */
+ 907      =1  
+ 908      =1  /*===============================   ZW_UART1_rx_dma_bytes_transferred  ========================
+ 909      =1  **  Returns the number of bytes that has been transferred to UART1 to XRAM for the ongoing DMA
+ 910      =1  **  process.
+ 911      =1  **
+ 912      =1  **  Parameters: None
+ 913      =1  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 24  
+
+ 914      =1  **   Side effects:
+ 915      =1  **--------------------------------------------------------------------------*/
+ 916      =1  BYTE                    /*RET bytes transferred */
+ 917      =1  ZW_UART1_rx_dma_bytes_transferred(void); /*IN Nothing */
+ 918      =1  
+ 919      =1  /*===============================   ZW_UART1_rx_dma_cancel  ========================
+ 920      =1  **  Cancels any ongoing DMA process and brings UART RX DMA to idle state
+ 921      =1  **
+ 922      =1  **  Parameters: None
+ 923      =1  **
+ 924      =1  **   Side effects:
+ 925      =1  **--------------------------------------------------------------------------*/
+ 926      =1  void                    /*RET nothing */
+ 927      =1  ZW_UART1_rx_dma_cancel(void); /*IN Nothing */
+ 928      =1  
+ 929      =1  
+ 930      =1  /*=============================   ZW_UART1_rx_dma_eor_set =======================
+ 931      =1  **
+ 932      =1  **  Sets the End of Record (EoR) character. The EoR function makes it possible
+ 933      =1  **  to switch receive buffer when a certain character is recieved, .e.g Linefeed.
+ 934      =1  **  UART_RX_DMA_SWITCH_EOR must have been set in the ZW_UART1_rx_dma_init call
+ 935      =1  **  for the function to be enabled.
+ 936      =1  **
+ 937      =1  **  Parameters:
+ 938      =1  **
+ 939      =1  **   Side effects:
+ 940      =1  **--------------------------------------------------------------------------*/
+ 941      =1  void                    /*RET nothing */
+ 942      =1  ZW_UART1_rx_dma_eor_set(BYTE bChar);  /*IN EoR character */
+ 943      =1  
+ 944      =1  /*=====================   ZW_UART1_rx_dma_byte_count_enable  =====================
+ 945      =1  **
+ 946      =1  **  Enables or disabled the function switch buffer when a certain byte count is
+ 947      =1  **  reached
+ 948      =1  **
+ 949      =1  **  Parameters: None
+ 950      =1  **
+ 951      =1  **   Side effects:
+ 952      =1  **--------------------------------------------------------------------------*/
+ 953      =1  void                    /*RET nothing */
+ 954      =1  ZW_UART1_rx_dma_byte_count_enable(BYTE bEnable); /* IN TRUE bute count switch is enabled */
+ 955      =1  
+ 956      =1  
+ 957      =1  #endif /* _ZW_UART_API_H_ */
+  27          #include <ZW_task.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Task pool handler.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef _ZW_TASK_H_
+   8      =1  #define _ZW_TASK_H_
+   9      =1  
+  10      =1  /****************************************************************************/
+  11      =1  /*                              INCLUDE FILES                               */
+  12      =1  /****************************************************************************/
+  13      =1  
+  14      =1  #include <ZW_stdint.h>
+   1      =2  /*
+   2      =2   * ZW_stdint.h
+   3      =2   *
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 25  
+
+   4      =2   * Define integer types by their conventional POSIX names [1].
+   5      =2   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =2   *
+   7      =2   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =2   *
+   9      =2   *  Created on: 18/01/2013
+  10      =2   *      Author: jbu
+  11      =2   */
+  12      =2  #ifndef ZW_STDINT_H_
+  15      =1  
+  16      =1  /****************************************************************************/
+  17      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  18      =1  /****************************************************************************/
+  19      =1  #ifndef TASK_POOL_SIZE
+  20      =1  #define TASK_POOL_SIZE 5
+  21      =1  #endif
+  22      =1  
+  23      =1  
+  24      =1  /****************************************************************************/
+  25      =1  /*                              EXPORTED DATA                               */
+  26      =1  /****************************************************************************/
+  27      =1  
+  28      =1  
+  29      =1  /****************************************************************************/
+  30      =1  /*                           EXPORTED FUNCTIONS                             */
+  31      =1  /****************************************************************************/
+  32      =1  
+  33      =1  
+  34      =1  /**
+  35      =1   * @brief Add task to task pool.
+  36      =1   * @param[in] CBPolltask function pointer to the task to poll.
+  37      =1   * @param[in] pTaskName pointer to a string descriping the Task name.
+  38      =1   * @return task handle ID or 0 if task-pool is full. Increase TASK_POOL_SIZE
+  39      =1   * if pool is full.
+  40      =1   */
+  41      =1  uint8_t TaskAdd(BOOL (CODE *CBPolltask)(void), const char * pTaskName);
+  42      =1  
+  43      =1  /**
+  44      =1   * @brief Pause the task.
+  45      =1   * @param[in] taskhandeId task handle ID
+  46      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  47      =1   */
+  48      =1  BOOL TaskPause(uint8_t taskhandeId);
+  49      =1  
+  50      =1  /**
+  51      =1   * @brief Run the paused task. If running do nothing.
+  52      =1   * @param[in] taskhandeId task handle ID
+  53      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  54      =1   */
+  55      =1  BOOL TaskRun(uint8_t taskhandeId);
+  56      =1  
+  57      =1  
+  58      =1  /**
+  59      =1   * @brief Remove the task from pool.
+  60      =1   * @param[in] taskhandeId task handle ID
+  61      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  62      =1   */
+  63      =1  BOOL TaskRemove(uint8_t taskhandeId);
+  64      =1  
+  65      =1  
+  66      =1  /**
+  67      =1   * @brief Interrupt process signal to the Task Handler to run all task in pool
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 26  
+
+  68      =1   * to check for new jobs.
+  69      =1   */
+  70      =1  void TaskInterruptSignal(void);
+  71      =1  
+  72      =1  /**
+  73      =1   * @brief Task handler main poll queue.
+  74      =1   * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+  75      =1   * TRUE if one or more task has job.
+  76      =1   */
+  77      =1  BOOL TaskApplicationPoll(void);
+  78      =1  
+  79      =1  
+  80      =1  /**
+  81      =1   * @brief TaskJobHasWork
+  82      =1   * Ask task handler if more task job to run. If not go to sleep.
+  83      =1   * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+  84      =1   * TRUE if one or more task has job.
+  85      =1   */
+  86      =1  BOOL TaskJobHasWork();
+  87      =1  
+  88      =1  
+  89      =1  #endif /* _ZW_TASK_H_ */
+  90      =1  
+  91      =1  
+  28          #include <ZW_test_interface_driver.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Test Interface Driver.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef _ZW_TEST_INTERFACE_DRIVER_H_
+   8      =1  #define _ZW_TEST_INTERFACE_DRIVER_H_
+   9      =1  
+  10      =1  
+  11      =1  /****************************************************************************/
+  12      =1  /*                              INCLUDE FILES                               */
+  13      =1  /****************************************************************************/
+  14      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 27  
+
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  15      =1  
+  16      =1  /*
+  17      =1   * DMA FUN
+  18      =1   */
+  19      =1  #define DMA_BUFFER_SIZE (64)
+  20      =1  #define DMA_BUFFER_SIZE_SINGLE (DMA_BUFFER_SIZE / 2)
+  21      =1  /*
+  22      =1   * DMA FUN OVER
+  23      =1   */
+  24      =1  
+  25      =1  /****************************************************************************/
+  26      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  27      =1  /****************************************************************************/
+  28      =1  /* Break to debugger if assert fails */
+  29      =1  #ifdef ZW_TEST_INTERFACE_DRIVER
+  30      =1  #define ZDB_ASSERT(x, sigval) if(!(x)) zdb_handle_exception(sigval);
+  31      =1  #else
+  36      =1  
+  37      =1  /****************************************************************************/
+  38      =1  /*                              EXPORTED DATA                               */
+  39      =1  /****************************************************************************/
+  40      =1  
+  41      =1  /****************************************************************************/
+  42      =1  /*                           EXPORTED FUNCTIONS                             */
+  43      =1  /****************************************************************************/
+  44      =1  #ifdef ZW_TEST_INTERFACE_DRIVER
+  45      =1  void ZW_test_interface_driver_init(void);
+  46      =1  #endif
+  47      =1  
+  48      =1  /**
+  49      =1   * @brief Copies received data to a buffer referenced by a given pointer.
+  50      =1   * @param[in] pData Pointer to a buffer which can store the data.
+  51      =1   * @param[in] pLength Pointer to a variable which can store the length of the
+  52      =1   * received data.
+  53      =1   * @return TRUE if byte is read out, FALSE otherwise.
+  54      =1   */
+  55      =1  BOOL ZW_test_interface_driver_getData(BYTE * pData, BYTE * pLength);
+  56      =1  
+  57      =1  #endif /* _ZW_TEST_INTERFACE_DRIVER_H_ */
+  29          #include <ZW_test_interface.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Parses incoming ASCII characters to commands for the application layer.
+   4      =1   *
+   5      =1   * The syntax for commands is: "<channel> <command><Carriage return>"
+   6      =1   *
+   7      =1   * 'channel' is letters [a-z] including 'w'.
+   8      =1   * 'command' is specific command for the channel
+   9      =1   *
+  10      =1   * NOTICE: Using this module together with the key_driver.c in
+  11      =1   * ApplicationUtilities on the ZDP03A development kit results in the S5
+  12      =1   * not working since its pin is shared with UART0 TX.
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 28  
+
+  13      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+  14      =1   */
+  15      =1  
+  16      =1  #ifndef Z_WAVE_INCLUDE_ZW_TEST_INTERFACE_H_
+  17      =1  #define Z_WAVE_INCLUDE_ZW_TEST_INTERFACE_H_
+  18      =1  
+  19      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  20      =1  #include <ZW_stdint.h>
+   1      =2  /*
+   2      =2   * ZW_stdint.h
+   3      =2   *
+   4      =2   * Define integer types by their conventional POSIX names [1].
+   5      =2   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =2   *
+   7      =2   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =2   *
+   9      =2   *  Created on: 18/01/2013
+  10      =2   *      Author: jbu
+  11      =2   */
+  12      =2  #ifndef ZW_STDINT_H_
+  21      =1  
+  22      =1  /**
+  23      =1   * @brief Hooks a function to a given channel.
+  24      =1   * @param[in] channel The desired channel to listen on.
+  25      =1   * @param[in] pCallback Pointer to function to be called when a command is ready.
+  26      =1   * @return TRUE if channel got allocated, FALSE otherwise.
+  27      =1   */
+  28      =1  //@ [ZW_test_interface_allocate]
+  29      =1  BOOL ZW_test_interface_allocate(
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 29  
+
+  30      =1      char channel,
+  31      =1      VOID_CALLBACKFUNC(pCallback)(char channel, char * pString));
+  32      =1  //@ [ZW_test_interface_allocate]
+  33      =1  
+  34      =1  #endif /* Z_WAVE_INCLUDE_ZW_TEST_INTERFACE_H_ */
+  30          #include <misc.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Miscellaneous stuff.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef _MISC_H_
+   8      =1  #define _MISC_H_
+   9      =1  
+  10      =1  /****************************************************************************/
+  11      =1  /*                              INCLUDE FILES                               */
+  12      =1  /****************************************************************************/
+  13      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  14      =1  //#include <ZW_classcmd.h>
+  15      =1  #include <ZW_transport_api.h>
+   1      =2  /****************************************************************************
+   2      =2   *
+   3      =2   * Copyright (c) 2001-2013
+   4      =2   * Sigma Designs, Inc.
+   5      =2   * All Rights Reserved
+   6      =2   *
+   7      =2   *---------------------------------------------------------------------------
+   8      =2   *
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 30  
+
+   9      =2   * Description: Z-Wave Transport Application layer interface
+  10      =2   *
+  11      =2   * Author:   Ivar Jeppesen
+  12      =2   *
+  13      =2   * Last Changed By:  $Author: jsi $
+  14      =2   * Revision:         $Revision: 31344 $
+  15      =2   * Last Changed:     $Date: 2015-04-17 13:53:23 +0200 (fr, 17 apr 2015) $
+  16      =2   *
+  17      =2   ****************************************************************************/
+  18      =2  /**
+  19      =2   * \file ZW_transport_api.h
+  20      =2   * \brief Z-Wave Transport Application layer interface.
+  21      =2   *
+  22      =2   * The Z Wave transport layer controls transfer of data between Z Wave nodes
+  23      =2   * including retransmission, frame check and acknowledgement. The Z Wave
+  24      =2   * transport interface includes functions for transfer of data to other Z Wave
+  25      =2   * nodes. Application data received from other nodes is handed over to the
+  26      =2   * application via the \ref ApplicationCommandHandler function. The ZW_MAX_NODES
+  27      =2   * define defines the maximum of nodes possible in a Z Wave network.
+  28      =2   */
+  29      =2  #ifndef _ZW_TRANSPORT_API_H_
+  30      =2  #define _ZW_TRANSPORT_API_H_
+  31      =2  #include <ZW_security_api.h>
+   1      =3  /***************************************************************************
+   2      =3  *
+   3      =3  * Copyright (c) 2013
+   4      =3  * Sigma Designs, Inc.
+   5      =3  * All Rights Reserved
+   6      =3  *
+   7      =3  *---------------------------------------------------------------------------
+   8      =3  *
+   9      =3  * Description: Some nice descriptive description.
+  10      =3  *
+  11      =3  * Author:   Jakob Buron
+  12      =3  *
+  13      =3  * Last Changed By:  $Author: jdo $
+  14      =3  * Revision:         $Revision: 1.38 $
+  15      =3  * Last Changed:     $Date: 2005/07/27 15:12:54 $
+  16      =3  *
+  17      =3  ****************************************************************************/
+  18      =3  #ifndef ZW_SECURITY_API_H_
+  19      =3  #define ZW_SECURITY_API_H_
+  20      =3  
+  21      =3  /****************************************************************************/
+  22      =3  /*                              INCLUDE FILES                               */
+  23      =3  /****************************************************************************/
+  24      =3  #include <ZW_typedefs.h>
+   1      =4  /*******************************  ZW_typedefs.h  *******************************
+   2      =4   *           #######
+   3      =4   *           ##  ##
+   4      =4   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =4   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =4   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =4   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =4   *          #######   ####   ##  ##  #####       ##  #####
+   9      =4   *                                           #####
+  10      =4   *          Products that speak Z-Wave work together better
+  11      =4   *
+  12      =4   *              Copyright (c) 2008
+  13      =4   *              Zensys A/S
+  14      =4   *              Denmark
+  15      =4   *
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 31  
+
+  16      =4   *              All Rights Reserved
+  17      =4   *
+  18      =4   *    This source file is subject to the terms and conditions of the
+  19      =4   *    Zensys Software License Agreement which restricts the manner
+  20      =4   *    in which it may be used.
+  21      =4   *
+  22      =4   *---------------------------------------------------------------------------
+  23      =4   *
+  24      =4   * Description: Module description
+  25      =4   *
+  26      =4   * Author:   Ivar Jeppesen
+  27      =4   *
+  28      =4   * Last Changed By:  $Author: efh $
+  29      =4   * Revision:         $Revision: 29359 $
+  30      =4   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =4   *
+  32      =4   ****************************************************************************/
+  33      =4  #ifndef _ZW_TYPEDEFS_H_
+  25      =3  
+  26      =3  /****************************************************************************/
+  27      =3  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  28      =3  /****************************************************************************/
+  29      =3  /* The security key a frame was received with or should be sent with.
+  30      =3   *
+  31      =3   * Special values:
+  32      =3  */
+  33      =3  typedef enum SECURITY_KEY
+  34      =3  {
+  35      =3    SECURITY_KEY_NONE = 0x00,
+  36      =3    SECURITY_KEY_S2_UNAUTHENTICATED = 0x01,
+  37      =3    SECURITY_KEY_S2_AUTHENTICATED = 0x02,
+  38      =3    SECURITY_KEY_S2_ACCESS = 0x03,
+  39      =3    SECURITY_KEY_S0 = 0x04,
+  40      =3  } security_key_t;
+  41      =3  
+  42      =3  
+  43      =3  /**
+  44      =3   * Bitmask for security keys. Used by \ref ZW_GetSecurityKeys.
+  45      =3   */
+  46      =3  #define SECURITY_KEY_S2_UNAUTHENTICATED_BIT 0x01
+  47      =3  #define SECURITY_KEY_S2_AUTHENTICATED_BIT 0x02
+  48      =3  #define SECURITY_KEY_S2_ACCESS_BIT 0x04
+  49      =3  #define SECURITY_KEY_S0_BIT 0x80
+  50      =3  
+  51      =3  #define SECURITY_KEY_S2_MASK (SECURITY_KEY_S2_UNAUTHENTICATED_BIT \
+  52      =3                                | SECURITY_KEY_S2_AUTHENTICATED_BIT \
+  53      =3                                | SECURITY_KEY_S2_ACCESS_BIT)
+  54      =3  #define SECURITY_KEY_NONE_MASK 0x00
+  55      =3  
+  56      =3  
+  57      =3  /**
+  58      =3   * Security S2 Public DSK Key length
+  59      =3   */
+  60      =3  #define SECURITY_KEY_S2_PUBLIC_DSK_LENGTH     16
+  61      =3  
+  62      =3  
+  63      =3  /**
+  64      =3   * Security S2 Public CSA DSK Key length
+  65      =3   */
+  66      =3  #define SECURITY_KEY_S2_PUBLIC_CSA_DSK_LENGTH 4
+  67      =3  
+  68      =3  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 32  
+
+  69      =3  /**
+  70      =3   *  definitions for Security S2 inclusion Authentication
+  71      =3   */
+  72      =3  typedef enum _E_SECURTIY_S2_AUTHENTICATION_
+  73      =3  {
+  74      =3    SECURITY_AUTHENTICATION_SSA = 0x00,
+  75      =3    SECURITY_AUTHENTICATION_CSA = 0x01
+  76      =3  } e_security_s2_authentication_t;
+  77      =3  
+  78      =3  
+  79      =3  typedef struct _S_SECURITY_S2_INCLUSION_CSA_PUBLIC_DSK_
+  80      =3  {
+  81      =3    BYTE aCSA_DSK[SECURITY_KEY_S2_PUBLIC_CSA_DSK_LENGTH];
+  82      =3  } s_SecurityS2InclusionCSAPublicDSK_t;
+  83      =3  
+  84      =3  
+  85      =3  /**
+  86      =3   * Definitions for Application bound Security events
+  87      =3   * Delivered from protocol to Application through the Application implmemented
+  88      =3   * ApplicationSecurityEvent(s_application_security_event_data_t)
+  89      =3   */
+  90      =3  typedef enum _E_APPLICATION_SECURITY_EVENT_
+  91      =3  {
+  92      =3    E_APPLICATION_SECURITY_EVENT_S2_INCLUSION_REQUEST_DSK_CSA
+  93      =3  } e_application_security_event_t;
+  94      =3  
+  95      =3  
+  96      =3  /**
+  97      =3   *
+  98      =3   *
+  99      =3   */
+ 100      =3  typedef struct _S_APPLICATION_SECURITY_EVENT_DATA_
+ 101      =3  {
+ 102      =3    e_application_security_event_t event;
+ 103      =3    BYTE eventDataLength;
+ 104      =3    BYTE *eventData;
+ 105      =3  } s_application_security_event_data_t;
+ 106      =3  
+ 107      =3  
+ 108      =3  /**
+ 109      =3  * Application must implement this. Used by protocol to request/inform Application
+ 110      =3  * of Security based Events. Currently only an event for Client Side Authentication (CSA)
+ 111      =3  * has been defined - E_APPLICATION_SECURITY_EVENT_S2_INCLUSION_REQUEST_DSK_CSA.
+ 112      =3  *
+ 113      =3  * \ref E_APPLICATION_SECURITY_EVENT_S2_INCLUSION_REQUEST_DSK_CSA Security Event
+ 114      =3  *   Is posted by protocol when in S2 inclusion with CSA enabled and the
+ 115      =3  *   Server side DSK is needed.
+ 116      =3  *   Application must call ZW_SetSecurityS2InclusionCSA_DSK(s_SecurityS2InclusionCSAPublicDSK_t *)
+ 117      =3  *   with the retrieved Server/Controller side DSK.
+ 118      =3  *
+ 119      =3  *   @param[in] securityEvent  Pointer to structure containing the security event
+ 120      =3  *                             and any possible data connected to the event.
+ 121      =3  */
+ 122      =3  void ApplicationSecurityEvent(s_application_security_event_data_t *securiyEvent);
+ 123      =3  
+ 124      =3  
+ 125      =3  /**
+ 126      =3  * Application must implement this function
+ 127      =3  * NOTE: If Z-Wave framework are used then ApplicationSecureCommandsSupported
+ 128      =3  *       are allready implemented in \ref ZW_TransportSecProtocol.c.
+ 129      =3  */
+ 130      =3  void
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 33  
+
+ 131      =3  ApplicationSecureCommandsSupported(
+ 132      =3      enum SECURITY_KEY eKey, /* IN Security Key to report on */
+ 133      =3      BYTE **pCmdClasses,           /* OUT Cmd classes supported by endpoint */
+ 134      =3      BYTE *pLength);               /* OUT Length of pCmdClasses, 0 if endpoint does not exist */
+ 135      =3  
+ 136      =3  
+ 137      =3  /**
+ 138      =3  * Application must implement this function to return a bitmask of the
+ 139      =3  * security keys requested by the node when joining a network.
+ 140      =3  * The including controller may grant all or a subset of the requested
+ 141      =3  * keys.
+ 142      =3  * Supported keys:
+ 143      =3  * \ref SECURITY_KEY_S0_BIT;
+ 144      =3  * \ref SECURITY_KEY_S2_ACCESS_BIT;
+ 145      =3  * \ref SECURITY_KEY_S2_AUTHENTICATED_BIT;
+ 146      =3  * \ref SECURITY_KEY_S2_UNAUTHENTICATED_BIT;
+ 147      =3  * \return A bitmask of supported security keys.
+ 148      =3  *
+ 149      =3  */
+ 150      =3  BYTE ApplicationSecureKeysRequested(void);
+ 151      =3  
+ 152      =3  
+ 153      =3  /**
+ 154      =3  * Application must implement this function to return a value of the
+ 155      =3  * security authentication requested by the node when joining a network.
+ 156      =3  * Supported methods:
+ 157      =3  * \ref SECURITY_AUTHENTICATION_SSA;
+ 158      =3  * \ref SECURITY_AUTHENTICATION_CSA;
+ 159      =3  *
+ 160      =3  */
+ 161      =3  BYTE ApplicationSecureAuthenticationRequested(void);
+ 162      =3  
+ 163      =3  
+ 164      =3  /**
+ 165      =3   *    @brief
+ 166      =3   *    Set the Controller DSK requested by protocol for CSA inclusion through
+ 167      =3   *    calling ApplicationSecurityS2InclusionRequestDSK_CSA
+ 168      =3   *
+ 169      =3   *    @param[in] response retrieved CSA DSK
+ 170      =3   *
+ 171      =3   */
+ 172      =3  void ZW_SetSecurityS2InclusionPublicDSK_CSA(s_SecurityS2InclusionCSAPublicDSK_t *response);
+ 173      =3  
+ 174      =3  
+ 175      =3  /*===========================   ZW_GetSecurityKeys   =========================
+ 176      =3  **
+ 177      =3  **    Returns a bitmask of security keys the application can request
+ 178      =3  **    ZW_SendDataEX() to use. When the node is excluded, no security keys
+ 179      =3  **    will be reported.
+ 180      =3  **
+ 181      =3  **    Side effects:
+ 182      =3  **
+ 183      =3  **--------------------------------------------------------------------------*/
+ 184      =3  BYTE ZW_GetSecurityKeys(void);
+ 185      =3  
+ 186      =3  
+ 187      =3  /*======================   ZW_SetSecurityS0NetworkKey   ======================
+ 188      =3  **    @brief
+ 189      =3  **    Set the network key S0 in the protocol.
+ 190      =3  **    This function is only to be called after a firmware update from an
+ 191      =3  **    application based upon an SDK prior to 6.70, as example 6.51, 6.60, or
+ 192      =3  **    6.61 to an application based upon SDK 6.70 or later.
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 34  
+
+ 193      =3  **
+ 194      =3  **    Note: This is only relevant for a node that was securely included in an
+ 195      =3  **          S0 based network.
+ 196      =3  **
+ 197      =3  **    @param[in] network_key  Pointer to the S0 network key for the home
+ 198      =3  **                            network. 16 bytes long.
+ 199      =3  **
+ 200      =3  **    Side effects:
+ 201      =3  **
+ 202      =3  **--------------------------------------------------------------------------*/
+ 203      =3  void ZW_SetSecurityS0NetworkKey(BYTE * network_key);
+ 204      =3  
+ 205      =3  
+ 206      =3  /**
+ 207      =3   *
+ 208      =3   *
+ 209      =3   */
+ 210      =3  void ZW_GetSecurityS2PublicDSK(BYTE *buf);
+ 211      =3  
+ 212      =3  
+ 213      =3  #ifdef ZW_SECURITY_PROTOCOL_SINGLE_NETWORK_KEY
+ 220      =3  
+ 221      =3  
+ 222      =3  /*
+ 223      =3   *
+ 224      =3   *
+ 225      =3   */
+ 226      =3  void ZW_s2_inclusion_init(void);
+ 227      =3  
+ 228      =3  
+ 229      =3  #endif /* ZW_SECURITY_API_H_ */
+  32      =2  #include <ZW_nodemask_api.h>
+   1      =3  /*******************************  ZW_NODEMASK_API.H  *******************************
+   2      =3   *           #######
+   3      =3   *           ##  ##
+   4      =3   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =3   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =3   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =3   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =3   *          #######   ####   ##  ##  #####       ##  #####
+   9      =3   *                                           #####
+  10      =3   *          Z-Wave, the wireless language.
+  11      =3   *
+  12      =3   *              Copyright (c) 2001
+  13      =3   *              Zensys A/S
+  14      =3   *              Denmark
+  15      =3   *
+  16      =3   *              All Rights Reserved
+  17      =3   *
+  18      =3   *    This source file is subject to the terms and conditions of the
+  19      =3   *    Zensys Software License Agreement which restricts the manner
+  20      =3   *    in which it may be used.
+  21      =3   *
+  22      =3   *---------------------------------------------------------------------------
+  23      =3   *
+  24      =3   * Description: Functions used to manipulate bits (Node ID) in a NodeMask array.
+  25      =3   *
+  26      =3   * Author:   Ivar Jeppesen
+  27      =3   *
+  28      =3   * Last Changed By:  $Author: jbu $
+  29      =3   * Revision:         $Revision: 26038 $
+  30      =3   * Last Changed:     $Date: 2013-06-10 09:08:11 +0200 (ma, 10 jun 2013) $
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 35  
+
+  31      =3   *
+  32      =3   ****************************************************************************/
+  33      =3  #ifndef _ZW_NODEMASK_API_H_
+  34      =3  #define _ZW_NODEMASK_API_H_
+  35      =3  
+  36      =3  /****************************************************************************/
+  37      =3  /*                              INCLUDE FILES                               */
+  38      =3  /****************************************************************************/
+  39      =3  
+  40      =3  
+  41      =3  /****************************************************************************/
+  42      =3  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  43      =3  /****************************************************************************/
+  44      =3  
+  45      =3  /*The max length of a node mask*/
+  46      =3  #define MAX_NODEMASK_LENGTH   (ZW_MAX_NODES/8)
+  47      =3  
+  48      =3  /****************************  NodeMask  ************************************
+  49      =3  ** Functions used to manipulate bits (Node ID) in a byte array (NodeMask array)
+  50      =3  **
+  51      =3  *****************************************************************************/
+  52      =3  
+  53      =3  /*===========================   ZW_NodeMaskSetBit   =========================
+  54      =3  **    Set the node bit in a node bitmask
+  55      =3  **
+  56      =3  ** void           RET   Nothing
+  57      =3  ** ZW_NodeMaskSetBit(
+  58      =3  ** BYTE_P pMask,         IN   pointer nodemask
+  59      =3  ** BYTE bNodeID);        IN   node to set in nodemask
+  60      =3  **--------------------------------------------------------------------------*/
+  61      =3  #define ZW_NODE_MASK_SET_BIT(pMask, bNodeID) ZW_NodeMaskSetBit(pMask, bNodeID)
+  62      =3  
+  63      =3  /*========================   NodeMaskClearBit   =============================
+  64      =3  **    Set the node bit in a node bitmask
+  65      =3  **
+  66      =3  ** void       RET   Nothing
+  67      =3  ** ZW_NodeMaskClearBit(
+  68      =3  ** BYTE_P pMask,     IN   nodemask
+  69      =3  ** BYTE bNodeID);    IN   node to clear in nodemask
+  70      =3  **--------------------------------------------------------------------------*/
+  71      =3  #define ZW_NODE_MASK_CLEAR_BIT(pMask, bNodeID) ZW_NodeMaskClearBit(pMask, bNodeID)
+  72      =3  
+  73      =3  /*===========================   ZW_NodeMaskClear   ==========================
+  74      =3  **    Clear all bits in a nodemask
+  75      =3  **
+  76      =3  ** void       RET   Nothing
+  77      =3  ** ZW_NodeMaskClear(
+  78      =3  ** BYTE_P pMask,     IN   nodemask
+  79      =3  ** BYTE bLength);    IN   length of nodemask
+  80      =3  **--------------------------------------------------------------------------*/
+  81      =3  #define ZW_NODE_MASK_CLEAR(pMask, bLength) ZW_NodeMaskClear(pMask, bLength)
+  82      =3  
+  83      =3  /*==========================   ZW_NodeMaskBitsIn   ==========================
+  84      =3  **    Check is any bit is set in a nodemask
+  85      =3  **
+  86      =3  ** BYTE       RET   Number of bits set in nodemask
+  87      =3  ** ZW_NodeMaskBitsIn(
+  88      =3  ** BYTE_P pMask,     IN   pointer to nodemask
+  89      =3  ** BYTE bLength);    IN   length of nodemask
+  90      =3  **--------------------------------------------------------------------------*/
+  91      =3  #define ZW_NODE_MASK_BITS_IN(pMask, bLength) ZW_NodeMaskBitsIn(pMask, bLength)
+  92      =3  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 36  
+
+  93      =3  /*==========================   ZW_NodeMaskNodeIn   ==========================
+  94      =3  **    Check if a node is in a nodemask
+  95      =3  **
+  96      =3  ** BYTE       RET   ZERO if not in nodemask, NONEZERO if in nodemask
+  97      =3  ** ZW_NodeMaskNodeIn(
+  98      =3  ** BYTE_P pMask,     IN   pointer to nodemask to check for bNode
+  99      =3  ** BYTE bNode);      IN   bit number that should be checked
+ 100      =3  **--------------------------------------------------------------------------*/
+ 101      =3  #define ZW_NODE_MASK_NODE_IN(pMask, bNode) ZW_NodeMaskNodeIn(pMask, bNode)
+ 102      =3  
+ 103      =3  
+ 104      =3  
+ 105      =3  /****************************************************************************/
+ 106      =3  /*                              EXPORTED DATA                               */
+ 107      =3  /****************************************************************************/
+ 108      =3  
+ 109      =3  /****************************************************************************/
+ 110      =3  /*                           EXPORTED FUNCTIONS                             */
+ 111      =3  /****************************************************************************/
+ 112      =3  
+ 113      =3  /*===========================   ZW_NodeMaskSetBit   =========================
+ 114      =3  **    Set the node bit in a node bitmask
+ 115      =3  **
+ 116      =3  **    Side effects
+ 117      =3  **
+ 118      =3  **--------------------------------------------------------------------------*/
+ 119      =3  extern void           /*RET   Nothing                 */
+ 120      =3  ZW_NodeMaskSetBit(
+ 121      =3  BYTE_P pMask,         /* IN   pointer nodemask        */
+ 122      =3  BYTE bNodeID);         /* IN   node to set in nodemask */
+ 123      =3  
+ 124      =3  /*========================   NodeMaskClearBit   =============================
+ 125      =3  **    Set the node bit in a node bitmask
+ 126      =3  **
+ 127      =3  **    Side effects
+ 128      =3  **
+ 129      =3  **--------------------------------------------------------------------------*/
+ 130      =3  extern void       /*RET   Nothing                   */
+ 131      =3  ZW_NodeMaskClearBit(
+ 132      =3  BYTE_P pMask,     /* IN   nodemask                  */
+ 133      =3  BYTE bNodeID);     /* IN   node to clear in nodemask */
+ 134      =3  
+ 135      =3  /*===========================   ZW_NodeMaskClear   ==========================
+ 136      =3  **    Clear all bits in a nodemask
+ 137      =3  **
+ 138      =3  **    Side effects
+ 139      =3  **
+ 140      =3  **--------------------------------------------------------------------------*/
+ 141      =3  extern void       /*RET   Nothing             */
+ 142      =3  ZW_NodeMaskClear(
+ 143      =3  BYTE_P pMask,     /* IN   nodemask            */
+ 144      =3  BYTE bLength);     /* IN   length of nodemask  */
+ 145      =3  
+ 146      =3  /*==========================   ZW_NodeMaskBitsIn   ==========================
+ 147      =3  **    Check is any bit is set in a nodemask
+ 148      =3  **
+ 149      =3  **--------------------------------------------------------------------------*/
+ 150      =3  extern BYTE       /*RET   Number of bits set in nodemask  */
+ 151      =3  ZW_NodeMaskBitsIn(
+ 152      =3  BYTE_P pMask,     /* IN   pointer to nodemask             */
+ 153      =3  BYTE bLength);     /* IN   length of nodemask              */
+ 154      =3  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 37  
+
+ 155      =3  /*==========================   ZW_NodeMaskNodeIn   ==========================
+ 156      =3  **    Check if a node is in a nodemask
+ 157      =3  **
+ 158      =3  **--------------------------------------------------------------------------*/
+ 159      =3  extern BYTE       /*RET   ZERO if not in nodemask, NONEZERO if in nodemask  */
+ 160      =3  ZW_NodeMaskNodeIn(
+ 161      =3  BYTE_P pMask,     /* IN   pointer to nodemask to check for bNode            */
+ 162      =3  BYTE bNode);      /* IN   bit number that should be checked                 */
+ 163      =3  
+ 164      =3  /*==========================   ZW_NodeMaskGetNextNode   =====================
+ 165      =3  ** Function:    Find the next NodeId that is set in a nodemask
+ 166      =3  **
+ 167      =3  ** Parameters:
+ 168      =3  **   currentNodeId                  =  last NodeId found (0 for first call)
+ 169      =3  **   pMask                          -> Nodemask that should be searched
+ 170      =3  **
+ 171      =3  ** Return:
+ 172      =3  **   If found                       = Next NodeId from the nodemask.
+ 173      =3  **   If not found                   = 0
+ 174      =3  **
+ 175      =3  **--------------------------------------------------------------------------*/
+ 176      =3  extern BYTE
+ 177      =3  ZW_NodeMaskGetNextNode(
+ 178      =3    BYTE currentNodeId,
+ 179      =3    BYTE_P pMask);
+ 180      =3  
+ 181      =3  #endif /* _ZW_NODEMASK_API_H_ */
+  33      =2  
+  34      =2  /****************************************************************************/
+  35      =2  /*                              INCLUDE FILES                               */
+  36      =2  /****************************************************************************/
+  37      =2  
+  38      =2  /****************************************************************************/
+  39      =2  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  40      =2  /****************************************************************************/
+  41      =2  
+  42      =2  /* Max number of nodes in a Z-wave system */
+  43      =2  #define ZW_MAX_NODES        232
+  44      =2  
+  45      =2  /************************************************************/
+  46      =2  /* Node Information frame*/
+  47      =2  /************************************************************/
+  48      =2  #define NODEPARM_MAX  35   /* max. number of parameters */
+  49      =2  
+  50      =2  
+  51      =2  /* Transmit frame option flags */
+  52      =2  #define TRANSMIT_OPTION_ACK                     0x01    /* request acknowledge from destination node */
+  53      =2  #define TRANSMIT_OPTION_LOW_POWER               0x02    /* transmit at low output power level (1/3 of norm
+             -al RF range) */
+  54      =2  #define TRANSMIT_OPTION_MULTICAST_AS_BROADCAST  0x02    /* The multicast frame should be send as a broadca
+             -st */
+  55      =2  #ifdef ZW_SLAVE
+  56      =2  #define TRANSMIT_OPTION_RETURN_ROUTE            0x04    /* request transmission via return route */
+  57      =2  #endif
+  58      =2  #define TRANSMIT_OPTION_AUTO_ROUTE              0x04    /* request retransmission via repeater nodes */
+  59      =2  /* do not use response route - Even if available */
+  60      =2  #define TRANSMIT_OPTION_NO_ROUTE                0x10
+  61      =2  /* Use explore frame if needed */
+  62      =2  #define TRANSMIT_OPTION_EXPLORE                 0x20
+  63      =2  
+  64      =2  /* Transmit frame option flag which are valid when sending explore frames  */
+  65      =2  #define TRANSMIT_EXPLORE_OPTION_ACK         TRANSMIT_OPTION_ACK
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 38  
+
+  66      =2  #define TRANSMIT_EXPLORE_OPTION_LOW_POWER   TRANSMIT_OPTION_LOW_POWER
+  67      =2  
+  68      =2  /* Allow Transport Service segmentation of long messages */
+  69      =2  #define TRANSMIT_OPTION_2_TRANSPORT_SERVICE 0x01
+  70      =2  #define TRANSMIT_OPTION_2_FOLLOWUP          0x08
+  71      =2  
+  72      =2  /* Received frame status flags */
+  73      =2  /**
+  74      =2   *  \defgroup RECEIVE_STATUS Status codes for receiving frames.
+  75      =2   * \addtogroup RECEIVE_STATUS
+  76      =2   * @{
+  77      =2   */
+  78      =2  
+  79      =2  /**
+  80      =2   * A response route is locked by the application
+  81      =2   */
+  82      =2  #define RECEIVE_STATUS_ROUTED_BUSY    0x01
+  83      =2  /**
+  84      =2   * Received at low output power level, this must
+  85      =2   * have the same value as TRANSMIT_OPTION_LOW_POWER
+  86      =2   */
+  87      =2  #define RECEIVE_STATUS_LOW_POWER      0x02
+  88      =2  /**
+  89      =2   * Mask for masking out the received frametype bits
+  90      =2   */
+  91      =2  #define RECEIVE_STATUS_TYPE_MASK      0x0C
+  92      =2  /**
+  93      =2   * Received frame is singlecast frame (rxOptions == xxxx00xx)
+  94      =2   */
+  95      =2  #define RECEIVE_STATUS_TYPE_SINGLE    0x00
+  96      =2  /**
+  97      =2   * Received frame is broadcast frame  (rxOptions == xxxx01xx)
+  98      =2   */
+  99      =2  #define RECEIVE_STATUS_TYPE_BROAD     0x04
+ 100      =2  /**
+ 101      =2   * Received frame is multicast frame (rxOptions == xxxx10xx)
+ 102      =2   */
+ 103      =2  #define RECEIVE_STATUS_TYPE_MULTI     0x08
+ 104      =2  /**
+ 105      =2   * Received frame is an explore frame (rxOptions == xxx1xxxx)
+ 106      =2   * Only TYPE_BROAD can be active at the same time as TYPE_EXPLORE
+ 107      =2   */
+ 108      =2  #define RECEIVE_STATUS_TYPE_EXPLORE   0x10
+ 109      =2  /**
+ 110      =2   * Received frame is not send to me (rxOptions == x1xxxxxx)
+ 111      =2   * - useful only in promiscuous mode
+ 112      =2   */
+ 113      =2  #define RECEIVE_STATUS_FOREIGN_FRAME  0x40
+ 114      =2  /**
+ 115      =2   * Received frame is send on another network (rxOptions == 1xxxxxxx)
+ 116      =2   * - useful only in Smart Start - used when receiving INIF from another network
+ 117      =2   */
+ 118      =2  #define RECEIVE_STATUS_FOREIGN_HOMEID 0x80
+ 119      =2  
+ 120      =2  /**
+ 121      =2   * @}
+ 122      =2   */
+ 123      =2  
+ 124      =2  /* Predefined Node ID's */
+ 125      =2  #define NODE_BROADCAST              0xFF    /* broadcast */
+ 126      =2  #define ZW_TEST_NOT_A_NODEID        0x00    /* */
+ 127      =2  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 39  
+
+ 128      =2  /* Transmit complete codes */
+ 129      =2  #define TRANSMIT_COMPLETE_OK      0x00
+ 130      =2  #define TRANSMIT_COMPLETE_NO_ACK  0x01  /* retransmission error */
+ 131      =2  #define TRANSMIT_COMPLETE_FAIL    0x02  /* transmit error */
+ 132      =2  #define TRANSMIT_ROUTING_NOT_IDLE 0x03  /* transmit error */
+ 133      =2  #ifdef ZW_CONTROLLER
+ 138      =2  #define TRANSMIT_COMPLETE_VERIFIED 0x05 /* Verified delivery */
+ 139      =2  
+ 140      =2  /* ZW_REDISCOVERY_NEEDED callback values. */
+ 141      =2  /* Note that they are different from ZW_REQUEST_NETWORK_UPDATE callbacks */
+ 142      =2  #define ZW_ROUTE_LOST_FAILED      0x04  /*Node Asked wont help us*/
+ 143      =2  #define ZW_ROUTE_LOST_ACCEPT      0x05  /*Accepted to help*/
+ 144      =2  
+ 145      =2  
+ 146      =2  #ifdef ZW_ROUTING_DEMO
+ 150      =2  
+ 151      =2  #define ZW_MAX_CACHED_RETURN_ROUTE_DESTINATIONS  5
+ 152      =2  
+ 153      =2  #define ZW_RF_TEST_SIGNAL_CARRIER              0x00
+ 154      =2  #define ZW_RF_TEST_SIGNAL_CARRIER_MODULATED    0x01
+ 155      =2  
+ 156      =2  /* Max hops in route */
+ 157      =2  #define MAX_REPEATERS      4
+ 158      =2  
+ 159      =2  
+ 160      =2  /* TX_STATUS_TYPE Last Used Route array size definitions */
+ 161      =2  #define LAST_USED_ROUTE_CONF_SIZE               1
+ 162      =2  #define LAST_USED_ROUTE_SIZE                    (MAX_REPEATERS + LAST_USED_ROUTE_CONF_SIZE)
+ 163      =2  
+ 164      =2  /* TX_STATUS_TYPE Last Used Route array index definitions */
+ 165      =2  #define LAST_USED_ROUTE_REPEATER_0_INDEX        0
+ 166      =2  #define LAST_USED_ROUTE_REPEATER_1_INDEX        1
+ 167      =2  #define LAST_USED_ROUTE_REPEATER_2_INDEX        2
+ 168      =2  #define LAST_USED_ROUTE_REPEATER_3_INDEX        3
+ 169      =2  #define LAST_USED_ROUTE_CONF_INDEX              4
+ 170      =2  
+ 171      =2  
+ 172      =2  /* RSSI feedback constants */
+ 173      =2  /* This is a signed 8-bit value. Note that values from RSSI_RESERVED_START to
+ 174      =2   * 124 are reserved. All values below RSSI_RESERVED_START are received power
+ 175      =2   * in dBms. Other values are defined below. */
+ 176      =2  #define RSSI_NOT_AVAILABLE 127       /* RSSI measurement not available */
+ 177      =2  #define RSSI_MAX_POWER_SATURATED 126 /* Receiver saturated. RSSI too high to measure precisely. */
+ 178      =2  #define RSSI_BELOW_SENSITIVITY 125   /* No signal detected. The RSSI is too low to measure precisely. */
+ 179      =2  #define RSSI_RESERVED_START    11    /* All values above and including RSSI_RESERVED_START are reserved,
+ 180      =2                                          except those defined above. */
+ 181      =2  
+ 182      =2  
+ 183      =2  /* RSSI value array used in TX_STATUS_TYPE.
+ 184      =2   * Each value is an RSSI feedback constant defined above. */
+ 185      =2  struct rssi_val {
+ 186      =2    signed char incoming[MAX_REPEATERS + 1];
+ 187      =2  };
+ 188      =2  
+ 189      =2  typedef struct _S_ROUTE_LINK_
+ 190      =2  {
+ 191      =2    BYTE from;
+ 192      =2    BYTE to;
+ 193      =2  } S_ROUTE_LINK;
+ 194      =2  
+ 195      =2  /* Transport routing scheme state define definitions */
+ 196      =2  /* 1 = direct, 2 = ApplicationStaticRoute, 3 = responseRoute/lastworkingRoute, */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 40  
+
+ 197      =2  /* 4 = Next to LastWorkingRoute(controller), 5 = returnRoute/controllerAutoRoute, 6 = directResort and 7 =
+             - explore */
+ 198      =2  typedef enum _E_ROUTING_SCHEME_
+ 199      =2  {
+ 200      =2    ROUTINGSCHEME_IDLE = 0,
+ 201      =2    ROUTINGSCHEME_DIRECT = 1,
+ 202      =2    ROUTINGSCHEME_CACHED_ROUTE_SR = 2,
+ 203      =2    ROUTINGSCHEME_CACHED_ROUTE = 3,
+ 204      =2    ROUTINGSCHEME_CACHED_ROUTE_NLWR = 4,
+ 205      =2    ROUTINGSCHEME_ROUTE = 5,
+ 206      =2    ROUTINGSCHEME_RESORT_DIRECT = 6,
+ 207      =2    ROUTINGSCHEME_RESORT_EXPLORE = 7
+ 208      =2  } E_ROUTING_SCHEME;
+ 209      =2  
+ 210      =2  
+ 211      =2  typedef struct _TX_STATUS_TYPE_
+ 212      =2  {
+ 213      =2    WORD wTransmitTicks;  /* Passed 10ms ticks */
+ 214      =2    BYTE bRepeaters;         /* Repeaters in route, zero for direct range */
+ 215      =2    /* rssi_values per hop for direct and routed frames.
+ 216      =2     * Contains repeaters + 1 values. */
+ 217      =2    struct rssi_val rssi_values;
+ 218      =2    BYTE bACKChannelNo;
+ 219      =2    BYTE bLastTxChannelNo;
+ 220      =2    E_ROUTING_SCHEME bRouteSchemeState;
+ 221      =2    BYTE pLastUsedRoute[LAST_USED_ROUTE_SIZE];
+ 222      =2    BYTE bRouteTries;
+ 223      =2    S_ROUTE_LINK bLastFailedLink;
+ 224      =2  } TX_STATUS_TYPE;
+ 225      =2  
+ 226      =2  
+ 227      =2  typedef struct _RECEIVE_OPTIONS_TYPE
+ 228      =2  {
+ 229      =2    /* Frame header info */
+ 230      =2    BYTE  rxStatus;
+ 231      =2    /* Command sender Node ID */
+ 232      =2    BYTE  sourceNode;
+ 233      =2    /* Frame destination ID, only valid when frame is not Multicast*/
+ 234      =2    BYTE  destNode;
+ 235      =2    /* Average RSSI val in dBm as defined in RSSI feedback constants above */
+ 236      =2    signed char rxRSSIVal;
+ 237      =2    /* Security key frame was received with. */
+ 238      =2    enum SECURITY_KEY securityKey;
+ 239      =2  } RECEIVE_OPTIONS_TYPE;
+ 240      =2  
+ 241      =2  
+ 242      =2  #if defined(ZW_SLAVE_ENHANCED_232) || defined(ZW_SLAVE_ROUTING)
+ 243      =2  enum ZW_SENDDATA_EX_RETURN_CODES
+ 244      =2  {
+ 245      =2      ZW_TX_FAILED = 0,
+ 246      =2      ZW_TX_IN_PROGRESS = 1
+ 247      =2  } ;
+ 248      =2  
+ 249      =2  
+ 250      =2  /**
+ 251      =2  * This flag will activate frame delivery.
+ 252      =2  *
+ 253      =2  * In this transmission mode the S2_send_data will try
+ 254      =2  * to verify that the receiver understood the sent message.
+ 255      =2  * This is done by waiting a little to see if the node will
+ 256      =2  * respond nonce report to the encrypted message. If the node
+ 257      =2  * does respond with a nonce report then the S2_send_data
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 41  
+
+ 258      =2  * call will automatically cause the system to re-sync the node,
+ 259      =2  * and deliver the message
+ 260      =2  *
+ 261      =2  */
+ 262      =2  #define S2_TXOPTION_VERIFY_DELIVERY 1
+ 263      =2  
+ 264      =2  /**
+ 265      =2  * This flag must be present on all single cast followup messages.
+ 266      =2  */
+ 267      =2  #define S2_TXOPTION_SINGLECAST_FOLLOWUP 2
+ 268      =2  
+ 269      =2  /**
+ 270      =2  * This flag must be present on the first, and only the first single
+ 271      =2  * cast followup message in a S2 multicast transmission.
+ 272      =2  */
+ 273      =2  #define S2_TXOPTION_FIRST_SINGLECAST_FOLLOWUP 4
+ 274      =2  
+ 275      =2  
+ 276      =2  /* Transmit options for ZW_SendDataEx */
+ 277      =2  typedef struct _TRANSMIT_OPTIONS_TYPE
+ 278      =2  {
+ 279      =2    /* Destination node ID - 0xFF == all nodes */
+ 280      =2    BYTE destNode;
+ 281      =2    /* Reserved */
+ 282      =2    BYTE bSrcNode;
+ 283      =2    /* Transmit options*/
+ 284      =2    BYTE txOptions;
+ 285      =2    /* Options for enabling specific Security scheme functionality */
+ 286      =2    BYTE txSecOptions;
+ 287      =2    /* Security key to use for sending. */
+ 288      =2    enum SECURITY_KEY securityKey;
+ 289      =2    /* More transmit options */
+ 290      =2    BYTE txOptions2;
+ 291      =2  } TRANSMIT_OPTIONS_TYPE;
+ 292      =2  
+ 293      =2  /* Transmit options for ZW_SendDataMultiEx */
+ 294      =2  typedef struct _TRANSMIT_MULTI_OPTIONS_TYPE
+ 295      =2  {
+ 296      =2    /* Destination group ID */
+ 297      =2    BYTE groupID;
+ 298      =2    /* Reserved */
+ 299      =2    BYTE bSrcNode;
+ 300      =2    /* Transmit options*/
+ 301      =2    BYTE txOptions;
+ 302      =2    /* Security key to use for sending - only S2 keys are valid. */
+ 303      =2    enum SECURITY_KEY securityKey;
+ 304      =2  } TRANSMIT_MULTI_OPTIONS_TYPE;
+ 305      =2  
+ 306      =2  typedef BYTE nodemask_t[MAX_NODEMASK_LENGTH];
+ 307      =2  
+ 308      =2  #endif /* #if defined(ZW_SLAVE_ENHANCED_232) || defined(ZW_SLAVE_ROUTING) */
+ 309      =2  
+ 310      =2  
+ 311      =2  
+ 312      =2  #ifdef ZW_SLAVE_ROUTING
+ 313      =2  
+ 314      =2  /*============================   ZW_RouteDestinations   ======================
+ 315      =2  **    Structure description
+ 316      =2  **      This contains a list of nodes that currently can be reached via
+ 317      =2  **      return routes.
+ 318      =2  **      This list MUST not be altered by the Application
+ 319      =2  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 42  
+
+ 320      =2  **--------------------------------------------------------------------------*/
+ 321      =2  extern BYTE ZW_RouteDestinations[ZW_MAX_CACHED_RETURN_ROUTE_DESTINATIONS];
+ 322      =2  
+ 323      =2  #endif  /* ZW_SLAVE_ROUTING */
+ 324      =2  
+ 325      =2  #if defined(ZW_CONTROLLER) && !defined(ZW_CONTROLLER_BRIDGE) || (defined(ZW_SLAVE) && !defined(ZW_SLAVE_RO
+             -UTING) && !defined(ZW_SLAVE_ENHANCED_232))
+ 353      =2  
+ 354      =2  #ifdef ZW_CONTROLLER_BRIDGE
+ 388      =2  
+ 389      =2  
+ 390      =2  #if defined(ZW_CONTROLLER) || defined(ZW_SLAVE_ROUTING)
+ 391      =2  
+ 392      =2  /*============================   ZW_SendDataAbort   ========================
+ 393      =2  **    Abort the ongoing transmit started with ZW_SendData()
+ 394      =2  **
+ 395      =2  **    Side effects:
+ 396      =2  **
+ 397      =2  **--------------------------------------------------------------------------*/
+ 398      =2  #define ZW_SEND_DATA_ABORT() ZW_SendDataAbort()
+ 399      =2  
+ 400      =2  
+ 401      =2  #ifndef ZW_CONTROLLER_BRIDGE
+ 402      =2  /*===============================   ZW_SendDataMulti   ======================
+ 403      =2  **    Transmit data buffer to a list of Z-Wave Nodes (multicast frame).
+ 404      =2  **
+ 405      =2  **
+ 406      =2  **    txOptions:
+ 407      =2  **          TRANSMIT_OPTION_LOW_POWER   transmit at low output power level (1/3 of
+ 408      =2  **                                      normal RF range).
+ 409      =2  **          TRANSMIT_OPTION_ACK         the multicast frame will be followed by a
+ 410      =2  **                                      singlecast frame to each of the destination nodes
+ 411      =2  **                                      and request acknowledge from each destination node.
+ 412      =2  **          TRANSMIT_OPTION_AUTO_ROUTE  request retransmission on singlecast frames
+ 413      =2  **                                      via repeater nodes (at normal output power level).
+ 414      =2  **
+ 415      =2  ** extern BYTE            RET  FALSE if transmitter queue overflow
+ 416      =2  ** ZW_SendDataMulti(
+ 417      =2  **  BYTE *pNodeIDList,     IN  List of destination node ID's
+ 418      =2  **  BYTE  numberNodes,     IN  Number of Nodes
+ 419      =2  **  BYTE *pData,           IN  Data buffer pointer
+ 420      =2  **  BYTE  dataLength,      IN  Data buffer length
+ 421      =2  **  BYTE  txOptions,       IN  Transmit option flags
+ 422      =2  **  VOID_CALLBACKFUNC(completedFunc)( IN  Transmit completed call back function
+ 423      =2  **    BYTE txStatus));     IN  Transmit status
+ 424      =2  **--------------------------------------------------------------------------*/
+ 425      =2  #define ZW_SEND_DATA_MULTI(nodelist,data,length,options,func) ZW_SendDataMulti(nodelist,data,length,option
+             -s,func)
+ 426      =2  
+ 427      =2  #else
+ 459      =2  
+ 460      =2  #endif  /* ZW_CONTROLLER || ZW_SLAVE_ROUTING */
+ 461      =2  
+ 462      =2  
+ 463      =2  /*============================   ZW_SEND_CONST =============================
+ 464      =2  **    Function description
+ 465      =2  **      If production test is enabled during start up.
+ 466      =2  **      Calling this function will transmit a constant signal until a new
+ 467      =2  **      RF function is called
+ 468      =2  **
+ 469      =2  **--------------------------------------------------------------------------*/
+ 470      =2  #define ZW_SEND_CONST() ZW_SendConst(TRUE, 1, ZW_RF_TEST_SIGNAL_CARRIER)
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 43  
+
+ 471      =2  
+ 472      =2  
+ 473      =2  #ifdef ZW_SLAVE
+ 474      =2  /*============================ ZW_LOCK_RESPONSE_ROUTE ========================
+ 475      =2  **    Function description
+ 476      =2  **      This function locks and unlocks all return routes
+ 477      =2  **      IN  nodeID  != 0x00 lock route to node
+ 478      =2  **          nodeDI == 0x00 unlock entry
+ 479      =2  **    Side effects:
+ 480      =2  **
+ 481      =2  **--------------------------------------------------------------------------*/
+ 482      =2  #define ZW_LOCK_RESPONSE_ROUTE(node) ZW_LockRoute(node)
+ 483      =2  
+ 484      =2  #else
+ 499      =2  
+ 500      =2  
+ 501      =2  /****************************************************************************/
+ 502      =2  /*                              EXPORTED DATA                               */
+ 503      =2  /****************************************************************************/
+ 504      =2  
+ 505      =2  /****************************************************************************/
+ 506      =2  /*                           EXPORTED FUNCTIONS                             */
+ 507      =2  /****************************************************************************/
+ 508      =2  
+ 509      =2  #ifdef ZW_SLAVE
+ 510      =2  /* TO#2133 fix - Keil compiler >7.50(8.xx) seems to have been changed somehow */
+ 511      =2  /* in the preprocessor part as if the 2 ZW_LockRoute definitions was ifdefed */
+ 512      =2  /* by ifdef ZW_SLAVE ... endif and ifdef ZW_CONTROLLER ... endif instead of */
+ 513      =2  /* ifdef ZW_SLAVE ... else ... endif, the Keil >7.50 reports Warning C235 */
+ 514      =2  /* on slave/slave routing/slave enhanced targets. */
+ 515      =2  /*============================   ZW_LockRoute   ==============================
+ 516      =2  **    Function description
+ 517      =2  **      This function locks and unlocks any temporary route to a specific nodeID
+ 518      =2  **    Side effects:
+ 519      =2  **
+ 520      =2  **--------------------------------------------------------------------------*/
+ 521      =2  void
+ 522      =2  ZW_LockRoute(
+ 523      =2    BYTE bNodeID);          /* IN if nonezero lock bNodeID entry, */
+ 524      =2                            /*    zero unlock entry */
+ 525      =2  
+ 526      =2  #else  /* ZW_SLAVE */
+ 542      =2  
+ 543      =2  
+ 544      =2  /**============================   ZW_SendConst  =============================
+ 545      =2  **    Function description
+ 546      =2  **      Start/Stop generate RF test signal in a desired channel
+ 547      =2  **      Signal can be
+ 548      =2  **                a carrier only
+ 549      =2  **                a modulated carrier
+ 550      =2  **
+ 551      =2  **      Side effects:
+ 552      =2  **-------------------------------------------------------------------------------------------------*/
+ 553      =2  
+ 554      =2  void
+ 555      =2  ZW_SendConst(
+ 556      =2                BYTE bStart,  /*IN TRUE start sending RF test signal, FALSE disable RF test signal*/
+ 557      =2                BYTE bChNo,   /*IN channle number to send RF test signal on*/
+ 558      =2                BYTE bSignalType ); /*IN The RF test signal type.*/
+ 559      =2  
+ 560      =2  #if defined(ZW_CONTROLLER) && !defined(ZW_CONTROLLER_BRIDGE) || (defined(ZW_SLAVE) && !defined(ZW_SLAVE_RO
+             -UTING) && !defined(ZW_SLAVE_ENHANCED_232))
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 44  
+
+ 594      =2  
+ 595      =2  #ifdef ZW_CONTROLLER_BRIDGE
+ 631      =2  
+ 632      =2  
+ 633      =2  /*============================   ZW_SendDataAbort   ========================
+ 634      =2  **    Abort the ongoing transmit started with ZW_SendData()
+ 635      =2  **
+ 636      =2  **    Side effects:
+ 637      =2  **
+ 638      =2  **--------------------------------------------------------------------------*/
+ 639      =2  void                /*RET FALSE if transmitter busy      */
+ 640      =2  ZW_SendDataAbort(void);
+ 641      =2  
+ 642      =2  
+ 643      =2  #ifndef ZW_CONTROLLER_BRIDGE
+ 644      =2  /*===============================   ZW_SendDataMulti   ======================
+ 645      =2  **    Transmit data buffer to a list of Z-Wave Nodes (multicast frame).
+ 646      =2  **
+ 647      =2  **
+ 648      =2  **    txOptions:
+ 649      =2  **          TRANSMIT_OPTION_LOW_POWER   transmit at low output power level (1/3 of
+ 650      =2  **                                      normal RF range).
+ 651      =2  **          TRANSMIT_OPTION_ACK         the multicast frame will be followed by a
+ 652      =2  **                                      singlecast frame to each of the destination nodes
+ 653      =2  **                                      and request acknowledge from each destination node.
+ 654      =2  **          TRANSMIT_OPTION_AUTO_ROUTE  request retransmission on singlecast frames via
+ 655      =2  **                                      repeater nodes/return routes (at normal output power level).
+ 656      =2  **
+ 657      =2  **--------------------------------------------------------------------------*/
+ 658      =2  extern BYTE            /*RET  FALSE if transmitter busy      */
+ 659      =2  ZW_SendDataMulti(
+ 660      =2    BYTE *pNodeIDList,          /*IN  List of destination node ID's */
+ 661      =2    BYTE *pData,                /*IN  Data buffer pointer           */
+ 662      =2    BYTE  dataLength,           /*IN  Data buffer length            */
+ 663      =2    BYTE  txOptions,            /*IN  Transmit option flags         */
+ 664      =2    VOID_CALLBACKFUNC(completedFunc)(BYTE)); /*IN  Transmit completed call back function  */
+ 665      =2  
+ 666      =2  #else
+ 691      =2  
+ 692      =2  #if defined(ZW_SLAVE_ENHANCED_232) || defined(ZW_SLAVE_ROUTING)
+ 693      =2  /**
+ 694      =2   * Send multicast security s2 encrypted frame.
+ 695      =2   * Only the MultiCast/Groupcast frame itself will be transmitted. There will be no single cast follow ups.
+ 696      =2   *
+ 697      =2   * \param pData             plaintext to which is going to be sent.
+ 698      =2   * \param dataLength        length of data to be sent.
+ 699      =2   * \param pTxOptionMultiEx  Transmit options structure containing the transmission source, transmit option
+             -s and
+ 700      =2   *                          the groupID which is the connection handle for the mulicast group to use,
+ 701      =2   *
+ 702      =2   */
+ 703      =2  enum ZW_SENDDATA_EX_RETURN_CODES                /*RET Return code      */
+ 704      =2  ZW_SendDataMultiEx(
+ 705      =2    BYTE *pData,            /* IN Data buffer pointer           */
+ 706      =2    BYTE  dataLength,       /* IN Data buffer length            */
+ 707      =2    TRANSMIT_MULTI_OPTIONS_TYPE *pTxOptionsMultiEx,
+ 708      =2    VOID_CALLBACKFUNC(completedFunc)(BYTE)); /* IN Transmit completed call back function */
+ 709      =2  
+ 710      =2  
+ 711      =2  /*===============================   ZW_SendDataEx   ===========================
+ 712      =2  **    Transmit data buffer to a single ZW-node or all ZW-nodes (broadcast).
+ 713      =2  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 45  
+
+ 714      =2  **  This supersedes the old ZW_SendData and adds support for secure
+ 715      =2  **  transmissions.
+ 716      =2  **
+ 717      =2  **    pData                             Pointer to the payload data to be transmitted
+ 718      =2  **
+ 719      =2  **    dataLength                        Payload data length
+ 720      =2  **
+ 721      =2  **    pTxOptionsEx                      Points to Transmit options structure containing:
+ 722      =2  **
+ 723      =2  **      destNode
+ 724      =2  **        destination node id - 0xFF means broadcast to all nodes
+ 725      =2  **
+ 726      =2  **      bSrcNode
+ 727      =2  **        Reserved for future use.
+ 728      =2  **
+ 729      =2  **      txOptions:
+ 730      =2  **        TRANSMIT_OPTION_LOW_POWER     transmit at low output power level
+ 731      =2  **                                      (1/3 of normal RF range).
+ 732      =2  **        TRANSMIT_OPTION_ACK           the destination nodes
+ 733      =2  **                                      and request acknowledge from each
+ 734      =2  **                                      destination node.
+ 735      =2  **        TRANSMIT_OPTION_AUTO_ROUTE    request retransmission via return route.
+ 736      =2  **        TRANSMIT_OPTION_EXPLORE       Use explore frame route resolution if all else fails
+ 737      =2  **
+ 738      =2  **
+ 739      =2  **      securityKeys:
+ 740      =2  **
+ 741      =2  **
+ 742      =2  **      txOptions2
+ 743      =2  **
+ 744      =2  **
+ 745      =2  **--------------------------------------------------------------------------*/
+ 746      =2  enum ZW_SENDDATA_EX_RETURN_CODES                /*RET Return code      */
+ 747      =2  ZW_SendDataEx(
+ 748      =2    BYTE *pData,      /* IN Data buffer pointer           */
+ 749      =2    BYTE  dataLength, /* IN Data buffer length            */
+ 750      =2    TRANSMIT_OPTIONS_TYPE *pTxOptionsEx,
+ 751      =2    VOID_CALLBACKFUNC(completedFunc)(BYTE, TX_STATUS_TYPE*));
+ 752      =2  #endif /* #if defined(ZW_SLAVE_ENHANCED_232) || defined(ZW_SLAVE_ROUTING) */
+ 753      =2  
+ 754      =2  
+ 755      =2  #ifdef ZW_PROMISCUOUS_MODE
+ 767      =2  
+ 768      =2  /*=======================   ZW_SetListenBeforeTalkThreshold   =================
+ 769      =2  **    Set the threshold that should be added to the standard -75dBm used
+ 770      =2  **    in JP listen before talk.
+ 771      =2  **
+ 772      =2  **    Side effects:
+ 773      =2  **
+ 774      =2  **--------------------------------------------------------------------------*/
+ 775      =2  void                              /*RET: Nothing */
+ 776      =2  ZW_SetListenBeforeTalkThreshold(
+ 777      =2    BYTE bChannel,                  /*IN: RF channel to set the threshold for */
+ 778      =2    BYTE bThreshold);               /*IN: Threshold to be added to RSSI limit */
+ 779      =2  
+ 780      =2  /**
+ 781      =2   * Return Version on supplied Command Class if supported by protocol.
+ 782      =2   * If supplied Command Class not supported by protocol then UNKNOWN_VERSION is returned.
+ 783      =2   *
+ 784      =2   * \param commandClass    command class to query for version.
+ 785      =2   *
+ 786      =2   */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 46  
+
+ 787      =2  BYTE                                  /*RET Version of supplied command class */
+ 788      =2  ZW_Transport_CommandClassVersionGet(
+ 789      =2    BYTE commandClass);                 /* IN Command class to query for version */
+ 790      =2  
+ 791      =2  
+ 792      =2  #endif /* _ZW_TRANSPORT_API_H_ */
+ 793      =2  
+  16      =1  
+  17      =1  /****************************************************************************/
+  18      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  19      =1  /****************************************************************************/
+  20      =1  
+  21      =1  /**
+  22      =1   * This define holds a default set of transmit options.
+  23      =1   */
+  24      =1  #define ZWAVE_PLUS_TX_OPTIONS (TRANSMIT_OPTION_ACK | TRANSMIT_OPTION_AUTO_ROUTE | TRANSMIT_OPTION_EXPLORE)
+  25      =1  
+  26      =1  /**
+  27      =1   * This define forces the function into the interbank call table. It is needed
+  28      =1   * for every function which will be passed as a function pointer.
+  29      =1   */
+  30      =1  #ifdef __C51__
+  31      =1  #define PCB(func) code const void (code * func ## _p)(void) = &func; \
+  32      =1   void func
+  33      =1  #else
+  36      =1  
+  37      =1  #ifdef __C51__
+  38      =1  #define PCB_BOOL(func) code const BOOL (code * func ## _p)(void) = &func; \
+  39      =1   BOOL func
+  40      =1  #else
+  43      =1  
+  44      =1  #ifdef __C51__
+  45      =1  #define PCB_UINT8_T(func) code const uint8_t (code * func ## _p)(void) = &func; \
+  46      =1   uint8_t func
+  47      =1  #else
+  50      =1  
+  51      =1  /**
+  52      =1   * This define forces the function into the interbank call table. It is needed
+  53      =1   * for every function which will be passed as a function pointer.
+  54      =1   * "Static" keyword is added.
+  55      =1   */
+  56      =1  #ifdef __C51__
+  57      =1  #define SPCB(func) code const void (code * func ## _p)(void) = &func; \
+  58      =1   static void func
+  59      =1  #else
+  62      =1  
+  63      =1  
+  64      =1  /****************************************************************************/
+  65      =1  /*                              EXPORTED DATA                               */
+  66      =1  /****************************************************************************/
+  67      =1  
+  68      =1  
+  69      =1  /****************************************************************************/
+  70      =1  /*                           EXPORTED FUNCTIONS                             */
+  71      =1  /****************************************************************************/
+  72      =1  
+  73      =1  
+  74      =1  
+  75      =1  
+  76      =1  /*=============================   GetMyNodeID  ===============================
+  77      =1  **
+  78      =1  **        Get the device node ID
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 47  
+
+  79      =1  **  Side effects: None
+  80      =1  **
+  81      =1  **------------------------------------------------------------------------------*/
+  82      =1  extern BYTE GetMyNodeID(void);
+  83      =1  
+  84      =1  #endif /*#ifndef _MISC_H_*/
+  31          
+  32          /****************************************************************************/
+  33          /*                      PRIVATE TYPES and DEFINITIONS                       */
+  34          /****************************************************************************/
+  35          #ifdef ZW_DEBUG_TEST_INTERFACE
+  42          #define ZW_DEBUG_TEST_INTERFACE_SEND_BYTE(data)
+  43          #define ZW_DEBUG_TEST_INTERFACE_SEND_STR(STR)
+  44          #define ZW_DEBUG_TEST_INTERFACE_SEND_NUM(data)
+  45          #define ZW_DEBUG_TEST_INTERFACE_SEND_WORD_NUM(data)
+  46          #define ZW_DEBUG_TEST_INTERFACE_SEND_NL()
+  47          #endif
+  48          
+  49          /* write a single character      */
+  50          #define ZDB_SEND_BYTE ZW_UART0_tx_send_byte
+  51          #define ZDB_SEND_STR ZW_UART0_tx_send_str
+  52          
+  53          
+  54          
+  55          #define TIMER_CALLBACK_PERIOD (10) // In milliseconds.
+  56          #define NUMBER_OF_CHANNELS     (2) //  letters (a,b)
+  57          #define BUFFER_SIZE           (20)
+  58          
+  59          typedef struct
+  60          {
+  61            char channel;
+  62            VOID_CALLBACKFUNC(pCallback) (char channel, char * pString);
+  63          }
+  64          CHANNEL_T;
+  65          
+  66          typedef enum
+  67          {
+  68            INDEX_CHANNEL_FOUND,
+  69            INDEX_CHANNEL_NEW,
+  70            INDEX_CHANNEL_FULL
+  71          } INDEX_RESULT_T;
+  72          
+  73          /****************************************************************************/
+  74          /*                              PRIVATE DATA                                */
+  75          /****************************************************************************/
+  76          static CHANNEL_T channels[NUMBER_OF_CHANNELS];
+  77          static uint8_t taskHandleId = 0;
+  78          /****************************************************************************/
+  79          /*                            PRIVATE FUNCTIONS                             */
+  80          /****************************************************************************/
+  81          static INDEX_RESULT_T get_index_from_channel(uint8_t * pIndex, char channel);
+  82          void init_once(void);
+  83          BOOL ZCB_test_interface_poll(void);
+  84          
+  85          /**
+  86           * @brief Initializes the test interface.
+  87           */
+  88          void init_once(void)
+  89          {
+  90   1        static BOOL fIsInitialized = FALSE;
+  91   1        ZW_DEBUG_TEST_INTERFACE_SEND_NL(); ZW_DEBUG_TEST_INTERFACE_SEND_STR("init_once"); ZW_DEBUG_TEST_INTERFAC
+             -E_SEND_NL();
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 48  
+
+  92   1        if (FALSE == fIsInitialized)
+  93   1        {
+  94   2          ZW_test_interface_driver_init();
+  95   2          // Do this initialization only the first time this function is called.
+  96   2          fIsInitialized = TRUE;
+  97   2      
+  98   2          memset((uint8_t * )channels, 0x00, (NUMBER_OF_CHANNELS * sizeof(CHANNEL_T)));
+  99   2          if ((taskHandleId = TaskAdd(ZCB_test_interface_poll,
+ 100   2                  "ZCB_test_interface_poll")) == 0)
+ 101   2          {
+ 102   3            ZW_DEBUG_TEST_INTERFACE_SEND_NL(); ZW_DEBUG_TEST_INTERFACE_SEND_STR("Task pool full");
+ 103   3          }
+ 104   2      
+ 105   2          ZW_DEBUG_TEST_INTERFACE_SEND_NL(); ZW_DEBUG_TEST_INTERFACE_SEND_STR("TI init.");
+ 106   2        }
+ 107   1      }
+ 108          
+ 109          BOOL ZW_test_interface_allocate(char channel, VOID_CALLBACKFUNC(pCallback) (char channel, char * pString))
+ 110          {
+ 111   1        uint8_t channel_index = 0;
+ 112   1      
+ 113   1        init_once();
+ 114   1      
+ 115   1        if (INDEX_CHANNEL_NEW != get_index_from_channel(&channel_index, channel))
+ 116   1        {
+ 117   2          // The channel is not free.
+ 118   2          ZW_DEBUG_TEST_INTERFACE_SEND_NL();
+ 119   2          ZW_DEBUG_TEST_INTERFACE_SEND_STR("Can't allocate :(");
+ 120   2          return FALSE;
+ 121   2        }
+ 122   1      
+ 123   1        channels[channel_index].channel = channel;
+ 124   1        channels[channel_index].pCallback = pCallback;
+ 125   1      
+ 126   1        ZW_DEBUG_TEST_INTERFACE_SEND_NL();
+ 127   1        ZW_DEBUG_TEST_INTERFACE_SEND_STR("Allocation done!");
+ 128   1        return TRUE;
+ 129   1      }
+ 130          
+ 131          
+ 132          /**
+ 133           * @brief Reads data from the ZW_zdb interface and calls channel functions if
+ 134           * they're allocated.
+ 135           */
+ 136          PCB_BOOL(ZCB_test_interface_poll)(void)
+ 137          {
+ 138   1        uint8_t channel_index;
+ 139   1        static uint8_t buffer[DMA_BUFFER_SIZE_SINGLE];
+ 140   1        uint8_t dataLength;
+ 141   1      
+ 142   1      #ifdef ZW_TEST_INTERFACE_DRIVER
+ 143   1        if (TRUE != ZW_test_interface_driver_getData(buffer, &dataLength))
+ 144   1        {
+ 145   2          return FALSE;
+ 146   2        }
+ 147   1      #endif /*ZW_TEST_INTERFACE_DRIVER*/
+ 148   1        ZW_DEBUG_TEST_INTERFACE_SEND_NL();
+ 149   1        ZW_DEBUG_TEST_INTERFACE_SEND_STR("Data length:");
+ 150   1        ZW_DEBUG_TEST_INTERFACE_SEND_NUM(dataLength);
+ 151   1      
+ 152   1        if ('\r' == buffer[dataLength - 1])
+ 153   1        {
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 49  
+
+ 154   2          BOOL channel_status = FALSE;
+ 155   2          ZW_DEBUG_TEST_INTERFACE_SEND_NL();
+ 156   2          ZW_DEBUG_TEST_INTERFACE_SEND_BYTE('2');
+ 157   2          if ((dataLength > 2) && (0x20 == buffer[1])) // 0x20 == <space>
+ 158   2          {
+ 159   3            // We got minimum three characters => valid input.
+ 160   3            INDEX_RESULT_T index_result = get_index_from_channel(&channel_index,
+ 161   3                    buffer[0]);
+ 162   3            ZW_DEBUG_TEST_INTERFACE_SEND_BYTE('3');
+ 163   3            if ((INDEX_CHANNEL_FOUND == index_result)
+ 164   3                    && (NULL != channels[channel_index].pCallback))
+ 165   3            {
+ 166   4              ZW_DEBUG_TEST_INTERFACE_SEND_BYTE('!');
+ 167   4              buffer[dataLength - 1] = '\0';
+ 168   4              (channels[channel_index].pCallback)(buffer[0], (char *)&buffer[2]);
+ 169   4              channel_status = TRUE;
+ 170   4            }
+ 171   3          }
+ 172   2          if(FALSE == channel_status)
+ 173   2          {
+ 174   3            uint8_t i = 0;
+ 175   3            /* No channel defined*/
+ 176   3            ZDB_SEND_STR((BYTE *)"\r\nChannels are:");
+ 177   3            for(i = 0; i < NUMBER_OF_CHANNELS; i++)
+ 178   3            {
+ 179   4              if(channels[i].channel != 0)
+ 180   4              {
+ 181   5                ZDB_SEND_STR((BYTE *)"\r\n\t >");
+ 182   5                ZDB_SEND_BYTE(channels[i].channel);
+ 183   5              }
+ 184   4            }
+ 185   3          }
+ 186   2        }
+ 187   1      
+ 188   1        return TRUE;
+ 189   1      }
+ 190          
+ 191          /**
+ 192           * @brief Returns the index location for a given channel. If channel is not
+ 193           * allocated, the next free index is returned.
+ 194           * @param pIndex Pointer to index location.
+ 195           * @param channel Channel to search for in the index.
+ 196           * @return TRUE if channel is allocated, FALSE otherwise.
+ 197           */
+ 198          static INDEX_RESULT_T get_index_from_channel(uint8_t * pIndex, char channel)
+ 199          {
+ 200   1        uint8_t count;
+ 201   1      
+ 202   1        for (count = 0; count < NUMBER_OF_CHANNELS; count++)
+ 203   1        {
+ 204   2          if (channel == channels[count].channel)
+ 205   2          {
+ 206   3            // The channel has already been allocated => return index.
+ 207   3            *pIndex = count;
+ 208   3            ZW_DEBUG_TEST_INTERFACE_SEND_STR("TI INDEX FOUND");
+ 209   3            return INDEX_CHANNEL_FOUND;
+ 210   3          }
+ 211   2          else if (0 == channels[count].channel)
+ 212   2          {
+ 213   3            *pIndex = count;
+ 214   3            ZW_DEBUG_TEST_INTERFACE_SEND_STR("TI INDEX NEW");
+ 215   3            return INDEX_CHANNEL_NEW;
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 50  
+
+ 216   3          }
+ 217   2        }
+ 218   1      
+ 219   1        *pIndex = NUMBER_OF_CHANNELS;
+ 220   1        ZW_DEBUG_TEST_INTERFACE_SEND_NL(); ZW_DEBUG_TEST_INTERFACE_SEND_STR("TI INDEX FULL");
+ 221   1        return INDEX_CHANNEL_FULL;
+ 222   1      }
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 51  
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION init_once (BEGIN)
+                                           ; SOURCE LINE # 88
+                                           ; SOURCE LINE # 89
+                                           ; SOURCE LINE # 92
+                 R     xJB     fIsInitialized,?C0003
+                                           ; SOURCE LINE # 93
+                                           ; SOURCE LINE # 94
+                 E     CALL    ZW_test_interface_driver_init
+                                           ; SOURCE LINE # 96
+                 R     SETB    fIsInitialized
+                                           ; SOURCE LINE # 98
+                       MOV     R3,#01H
+                 R     MOV     R2,#HIGH channels
+                 R     MOV     R1,#LOW channels
+                       MOV     R5,#06H
+                       CLR     A
+                       MOV     R7,A
+                 E     CALL    ___ZW_memset
+                                           ; SOURCE LINE # 99
+                 R     MOV     R6,#HIGH ZCB_test_interface_poll
+                 R     MOV     R7,#LOW ZCB_test_interface_poll
+                       MOV     R3,#0FFH
+                 R     MOV     R2,#HIGH ?SC_0
+                 R     MOV     R1,#LOW ?SC_0
+                 E     CALL    _TaskAdd
+                 R     MOV     DPTR,#taskHandleId
+                       MOV     A,R7
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 101
+                                           ; SOURCE LINE # 103
+                                           ; SOURCE LINE # 106
+                                           ; SOURCE LINE # 107
+             ?C0003:
+                       RET     
+             ; FUNCTION init_once (END)
+
+             ; FUNCTION _ZW_test_interface_allocate (BEGIN)
+                                           ; SOURCE LINE # 109
+                 R     MOV     DPTR,#channel
+                       MOV     A,R7
+                       MOVX    @DPTR,A
+                       INC     DPTR
+                       MOV     A,R4
+                       MOVX    @DPTR,A
+                       INC     DPTR
+                       MOV     A,R5
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 110
+                                           ; SOURCE LINE # 111
+                       CLR     A
+                       INC     DPTR
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 113
+                 R     CALL    init_once
+                                           ; SOURCE LINE # 115
+                       MOV     R3,#01H
+                 R     MOV     R2,#HIGH channel_index
+                 R     MOV     R1,#LOW channel_index
+                 R     MOV     DPTR,#channel
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 52  
+
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                 R     CALL    _get_index_from_channel
+                       MOV     A,R7
+                       XRL     A,#01H
+                 R     xJZ     ?C0004
+                                           ; SOURCE LINE # 116
+                                           ; SOURCE LINE # 120
+                       CLR     C
+                       RET     
+                                           ; SOURCE LINE # 121
+             ?C0004:
+                                           ; SOURCE LINE # 123
+                 R     MOV     DPTR,#channel
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                 R     MOV     DPTR,#channel_index
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels
+                       MOV     DPH,A
+                       MOV     A,R7
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 124
+                 R     MOV     DPTR,#pCallback
+                       MOVX    A,@DPTR
+                       MOV     R4,A
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       MOV     A,R6
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels+01H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels+01H
+                       MOV     DPH,A
+                       MOV     A,R4
+                       MOVX    @DPTR,A
+                       INC     DPTR
+                       MOV     A,R5
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 128
+                       SETB    C
+                                           ; SOURCE LINE # 129
+             ?C0005:
+                       RET     
+             ; FUNCTION _ZW_test_interface_allocate (END)
+
+             ; FUNCTION ZCB_test_interface_poll (BEGIN)
+                                           ; SOURCE LINE # 136
+                                           ; SOURCE LINE # 137
+                                           ; SOURCE LINE # 143
+                       MOV     R3,#01H
+                 R     MOV     R2,#HIGH dataLength
+                 R     MOV     R1,#LOW dataLength
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 53  
+
+                 E     MOV     DPTR,#?_ZW_test_interface_driver_getData?BYTE+03H
+                 E     CALL    ?C?PSTXDATA
+                 R     MOV     R2,#HIGH buffer
+                 R     MOV     R1,#LOW buffer
+                 E     CALL    _ZW_test_interface_driver_getData
+                 R     xJC     ?C0006
+                                           ; SOURCE LINE # 144
+                                           ; SOURCE LINE # 145
+                       RET     
+                                           ; SOURCE LINE # 146
+             ?C0006:
+                                           ; SOURCE LINE # 152
+                 R     MOV     DPTR,#dataLength
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                 R     ADD     A,#LOW buffer+0FFFFH
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH buffer+0FFFFH
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       XRL     A,#0DH
+                 R     xJNZ    ?C0008
+                                           ; SOURCE LINE # 153
+                                           ; SOURCE LINE # 154
+                 R     CLR     channel_status
+                                           ; SOURCE LINE # 157
+                       MOV     A,R7
+                       SETB    C
+                       SUBB    A,#02H
+                 R     xJLT    ?C0009
+                 R     MOV     DPTR,#buffer+01H
+                       MOVX    A,@DPTR
+                       XRL     A,#020H
+                 R     xJNZ    ?C0009
+                                           ; SOURCE LINE # 158
+                                           ; SOURCE LINE # 160
+                       MOV     R3,#01H
+                 R     MOV     R2,#HIGH channel_index
+                 R     MOV     R1,#LOW channel_index
+                 R     MOV     DPTR,#buffer
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                 R     CALL    _get_index_from_channel
+                 R     MOV     DPTR,#index_result
+                       MOV     A,R7
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 163
+                 R     xJNZ    ?C0009
+                 R     MOV     DPTR,#channel_index
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels+01H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels+01H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R4,A
+                       INC     DPTR
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 54  
+
+                       MOVX    A,@DPTR
+                       ORL     A,R4
+                 R     xJZ     ?C0009
+                                           ; SOURCE LINE # 165
+                                           ; SOURCE LINE # 167
+                 R     MOV     DPTR,#dataLength
+                       MOVX    A,@DPTR
+                 R     ADD     A,#LOW buffer+0FFFFH
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH buffer+0FFFFH
+                       MOV     DPH,A
+                       CLR     A
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 168
+                 R     MOV     DPTR,#buffer
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                       MOV     R3,#01H
+                 R     MOV     R2,#HIGH buffer+02H
+                 R     MOV     R1,#LOW buffer+02H
+                       MOV     A,R6
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels+01H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels+01H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R4,A
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       MOV     DPL,A
+                       MOV     DPH,R4
+                 E     CALL    ?C?ICALL2
+                                           ; SOURCE LINE # 169
+                 R     SETB    channel_status
+                                           ; SOURCE LINE # 170
+                                           ; SOURCE LINE # 171
+             ?C0009:
+                                           ; SOURCE LINE # 172
+                 R     xJB     channel_status,?C0008
+                                           ; SOURCE LINE # 173
+                                           ; SOURCE LINE # 174
+                       CLR     A
+                 R     MOV     DPTR,#i
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 176
+                       MOV     R3,#0FFH
+                 R     MOV     R2,#HIGH ?SC_24
+                 R     MOV     R1,#LOW ?SC_24
+                 E     CALL    _ZW_UART0_tx_send_str
+                                           ; SOURCE LINE # 177
+                       CLR     A
+                 R     MOV     DPTR,#i
+                       MOVX    @DPTR,A
+             ?C0012:
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 55  
+
+                       CLR     C
+                       SUBB    A,#02H
+                 R     xJGE    ?C0008
+                                           ; SOURCE LINE # 178
+                                           ; SOURCE LINE # 179
+                       MOV     A,R7
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                 R     xJZ     ?C0014
+                                           ; SOURCE LINE # 180
+                                           ; SOURCE LINE # 181
+                       MOV     R3,#0FFH
+                 R     MOV     R2,#HIGH ?SC_40
+                 R     MOV     R1,#LOW ?SC_40
+                 E     CALL    _ZW_UART0_tx_send_str
+                                           ; SOURCE LINE # 182
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                 E     CALL    _ZW_UART0_tx_send_byte
+                                           ; SOURCE LINE # 183
+                                           ; SOURCE LINE # 184
+             ?C0014:
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       INC     A
+                       MOVX    @DPTR,A
+                 R     xJMP    ?C0012
+                                           ; SOURCE LINE # 185
+                                           ; SOURCE LINE # 186
+             ?C0008:
+                                           ; SOURCE LINE # 188
+                       SETB    C
+                                           ; SOURCE LINE # 189
+             ?C0007:
+                       RET     
+             ; FUNCTION ZCB_test_interface_poll (END)
+
+             ; FUNCTION _get_index_from_channel (BEGIN)
+                                           ; SOURCE LINE # 198
+;---- Variable 'pIndex' assigned to Register 'R1/R2/R3' ----
+;---- Variable 'channel' assigned to Register 'R5' ----
+                                           ; SOURCE LINE # 199
+                                           ; SOURCE LINE # 202
+;---- Variable 'count' assigned to Register 'R7' ----
+                       CLR     A
+                       MOV     R7,A
+             ?C0016:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 56  
+
+                                           ; SOURCE LINE # 203
+                                           ; SOURCE LINE # 204
+                       MOV     A,R7
+                       MOV     B,#03H
+                       MUL     AB
+                 R     ADD     A,#LOW channels
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH channels
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                 R     xJNE    A,AR5,?C0019
+                                           ; SOURCE LINE # 205
+                                           ; SOURCE LINE # 207
+                       MOV     A,R7
+                 E     CALL    ?C?CSTPTR
+                                           ; SOURCE LINE # 209
+                       MOV     R7,#00H
+                       RET     
+                                           ; SOURCE LINE # 210
+             ?C0019:
+                                           ; SOURCE LINE # 211
+                       MOV     A,R6
+                 R     xJNZ    ?C0018
+                                           ; SOURCE LINE # 212
+                                           ; SOURCE LINE # 213
+                       MOV     A,R7
+                 E     CALL    ?C?CSTPTR
+                                           ; SOURCE LINE # 215
+                       MOV     R7,#01H
+                       RET     
+                                           ; SOURCE LINE # 216
+                                           ; SOURCE LINE # 217
+             ?C0018:
+                       INC     R7
+                       MOV     A,R7
+                 R     xJNE    A,#02H,?C0016
+             ?C0017:
+                                           ; SOURCE LINE # 219
+                       MOV     A,#02H
+                 E     CALL    ?C?CSTPTR
+                                           ; SOURCE LINE # 221
+                       MOV     R7,A
+                                           ; SOURCE LINE # 222
+             ?C0020:
+                       RET     
+             ; FUNCTION _get_index_from_channel (END)
+
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 57  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+sSomeXDATA4K . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  1
+  anything . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+uint16_t . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+ROUTINGSCHEME_DIRECT . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+DWORD. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+u8_t . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+ZCB_test_interface_poll_p. . . . . . .  PUBLIC   CODE   PTR      002EH  2
+int32_t. . . . . . . . . . . . . . . .  TYPEDEF  -----  LONG     -----  4
+_TRANSMIT_OPTIONS_TYPE . . . . . . . .  * TAG *  -----  STRUCT   -----  6
+  destNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  bSrcNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  txOptions. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  txSecOptions . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+  securityKey. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0004H  1
+  txOptions2 . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0005H  1
+_S_SECURITY_S2_INCLUSION_CSA_PUBLIC_DSK_* TAG *  -----  STRUCT   -----  4
+  aCSA_DSK . . . . . . . . . . . . . .  MEMBER   -----  ARRAY    0000H  4
+ZW_TX_IN_PROGRESS. . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+uint_fast16_t. . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+_get_index_from_channel. . . . . . . .  STATIC   CODE   PROC     0000H  -----
+  pIndex . . . . . . . . . . . . . . .  * REG *  DATA   PTR      0001H  3
+  channel. . . . . . . . . . . . . . .  * REG *  DATA   CHAR     0005H  1
+  count. . . . . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0007H  1
+_S_ROUTE_LINK_ . . . . . . . . . . . .  * TAG *  -----  STRUCT   -----  2
+  from . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  to . . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+_ZW_UART0_tx_send_str. . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+TRANSMIT_MULTI_OPTIONS_TYPE. . . . . .  TYPEDEF  -----  STRUCT   -----  4
+  groupID. . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  bSrcNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  txOptions. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  securityKey. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+TX_STATUS_TYPE . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  19
+  wTransmitTicks . . . . . . . . . . .  MEMBER   -----  U_INT    0000H  2
+  bRepeaters . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  rssi_values. . . . . . . . . . . . .  MEMBER   -----  STRUCT   0003H  5
+  bACKChannelNo. . . . . . . . . . . .  MEMBER   -----  U_CHAR   0008H  1
+  bLastTxChannelNo . . . . . . . . . .  MEMBER   -----  U_CHAR   0009H  1
+  bRouteSchemeState. . . . . . . . . .  MEMBER   -----  U_CHAR   000AH  1
+  pLastUsedRoute . . . . . . . . . . .  MEMBER   -----  ARRAY    000BH  5
+  bRouteTries. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0010H  1
+  bLastFailedLink. . . . . . . . . . .  MEMBER   -----  STRUCT   0011H  2
+_ZW_test_interface_allocate. . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  channel. . . . . . . . . . . . . . .  AUTO     XDATA  CHAR     0000H  1
+  pCallback. . . . . . . . . . . . . .  AUTO     XDATA  PTR      0001H  2
+  channel_index. . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0003H  1
+_RECEIVE_OPTIONS_TYPE. . . . . . . . .  * TAG *  -----  STRUCT   -----  5
+  rxStatus . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  sourceNode . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  destNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  rxRSSIVal. . . . . . . . . . . . . .  MEMBER   -----  CHAR     0003H  1
+  securityKey. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0004H  1
+int_fast16_t . . . . . . . . . . . . .  TYPEDEF  -----  INT      -----  2
+e_application_security_event_t . . . .  TYPEDEF  -----  U_CHAR   -----  1
+_TaskAdd . . . . . . . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+INDEX_CHANNEL_NEW. . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+XDATA4K_P. . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 58  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+s_application_security_event_data_t. .  TYPEDEF  -----  STRUCT   -----  5
+  event. . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  eventDataLength. . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  eventData. . . . . . . . . . . . . .  MEMBER   -----  PTR      0002H  3
+_E_ROUTING_SCHEME_ . . . . . . . . . .  * TAG *  -----  ENUM     -----  -----
+E_APPLICATION_SECURITY_EVENT_S2_INCLUS  E_CONST  -----  U_CHAR   -----  1
+ROUTINGSCHEME_RESORT_EXPLORE . . . . .  E_CONST  -----  U_CHAR   -----  1
+TRANSMIT_OPTIONS_TYPE. . . . . . . . .  TYPEDEF  -----  STRUCT   -----  6
+  destNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  bSrcNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  txOptions. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  txSecOptions . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+  securityKey. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0004H  1
+  txOptions2 . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0005H  1
+SECURITY_KEY_S0. . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+nodemask_t . . . . . . . . . . . . . .  TYPEDEF  -----  ARRAY    -----  29
+bool . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+CHANNEL_T. . . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  3
+  channel. . . . . . . . . . . . . . .  MEMBER   -----  CHAR     0000H  1
+  pCallback. . . . . . . . . . . . . .  MEMBER   -----  PTR      0001H  2
+u16_t. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+DWORD_P. . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+taskHandleId . . . . . . . . . . . . .  STATIC   XDATA  U_CHAR   0020H  1
+ZCB_test_interface_poll. . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  index_result . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0002H  1
+  i. . . . . . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0002H  1
+  channel_status . . . . . . . . . . .  AUTO     DATA   BIT      0000H  1
+  channel_index. . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0000H  1
+  buffer . . . . . . . . . . . . . . .  STATIC   XDATA  ARRAY    0000H  32
+  dataLength . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0001H  1
+INDEX_CHANNEL_FOUND. . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+BYTE . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+RECEIVE_OPTIONS_TYPE . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  5
+  rxStatus . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  sourceNode . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  destNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  rxRSSIVal. . . . . . . . . . . . . .  MEMBER   -----  CHAR     0003H  1
+  securityKey. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0004H  1
+SECURITY_AUTHENTICATION_CSA. . . . . .  E_CONST  -----  U_CHAR   -----  1
+WORD . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+init_once. . . . . . . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  fIsInitialized . . . . . . . . . . .  STATIC   DATA   BIT      0000H  1
+SECURITY_KEY_S2_ACCESS . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+ROUTINGSCHEME_RESORT_DIRECT. . . . . .  E_CONST  -----  U_CHAR   -----  1
+ZW_TX_FAILED . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+SECURITY_KEY . . . . . . . . . . . . .  * TAG *  -----  ENUM     -----  -----
+SECURITY_AUTHENTICATION_SSA. . . . . .  E_CONST  -----  U_CHAR   -----  1
+_E_SECURTIY_S2_AUTHENTICATION_ . . . .  * TAG *  -----  ENUM     -----  -----
+uint8_t. . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+ROUTINGSCHEME_CACHED_ROUTE . . . . . .  E_CONST  -----  U_CHAR   -----  1
+channels . . . . . . . . . . . . . . .  STATIC   XDATA  ARRAY    0021H  6
+S_ROUTE_LINK . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  2
+  from . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  to . . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+ROUTINGSCHEME_ROUTE. . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+ROUTINGSCHEME_CACHED_ROUTE_SR. . . . .  E_CONST  -----  U_CHAR   -----  1
+SECURITY_KEY_S2_AUTHENTICATED. . . . .  E_CONST  -----  U_CHAR   -----  1
+C51 COMPILER V9.54   ZW_TEST_INTERFACE                                                     11/21/2021 08:17:20 PAGE 59  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+_TX_STATUS_TYPE_ . . . . . . . . . . .  * TAG *  -----  STRUCT   -----  19
+  wTransmitTicks . . . . . . . . . . .  MEMBER   -----  U_INT    0000H  2
+  bRepeaters . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  rssi_values. . . . . . . . . . . . .  MEMBER   -----  STRUCT   0003H  5
+  bACKChannelNo. . . . . . . . . . . .  MEMBER   -----  U_CHAR   0008H  1
+  bLastTxChannelNo . . . . . . . . . .  MEMBER   -----  U_CHAR   0009H  1
+  bRouteSchemeState. . . . . . . . . .  MEMBER   -----  U_CHAR   000AH  1
+  pLastUsedRoute . . . . . . . . . . .  MEMBER   -----  ARRAY    000BH  5
+  bRouteTries. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0010H  1
+  bLastFailedLink. . . . . . . . . . .  MEMBER   -----  STRUCT   0011H  2
+SECURITY_KEY_NONE. . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+_E_APPLICATION_SECURITY_EVENT_ . . . .  * TAG *  -----  ENUM     -----  -----
+___ZW_memset . . . . . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+ROUTINGSCHEME_IDLE . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+BYTE_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+s_SecurityS2InclusionCSAPublicDSK_t. .  TYPEDEF  -----  STRUCT   -----  4
+  aCSA_DSK . . . . . . . . . . . . . .  MEMBER   -----  ARRAY    0000H  4
+E_ROUTING_SCHEME . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+rssi_val . . . . . . . . . . . . . . .  * TAG *  -----  STRUCT   -----  5
+  incoming . . . . . . . . . . . . . .  MEMBER   -----  ARRAY    0000H  5
+_S_APPLICATION_SECURITY_EVENT_DATA_. .  * TAG *  -----  STRUCT   -----  5
+  event. . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  eventDataLength. . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  eventData. . . . . . . . . . . . . .  MEMBER   -----  PTR      0002H  3
+e_security_s2_authentication_t . . . .  TYPEDEF  -----  U_CHAR   -----  1
+INDEX_CHANNEL_FULL . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+ZW_SENDDATA_EX_RETURN_CODES. . . . . .  * TAG *  -----  ENUM     -----  -----
+WORD_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+INDEX_RESULT_T . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+_ZW_UART0_tx_send_byte . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+ZW_test_interface_driver_init. . . . .  EXTERN   CODE   PROC     -----  -----
+ROUTINGSCHEME_CACHED_ROUTE_NLWR. . . .  E_CONST  -----  U_CHAR   -----  1
+_TRANSMIT_MULTI_OPTIONS_TYPE . . . . .  * TAG *  -----  STRUCT   -----  4
+  groupID. . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  bSrcNode . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  txOptions. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  securityKey. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+intptr_t . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+SECURITY_KEY_S2_UNAUTHENTICATED. . . .  E_CONST  -----  U_CHAR   -----  1
+_ZW_test_interface_driver_getData. . .  EXTERN   CODE   PROC     -----  -----
+uint32_t . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+security_key_t . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    476    ----
+   CONSTANT SIZE    =     48    ----
+   XDATA SIZE       =     39       7
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       1
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,444 @@
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE UART_COMMAND
+OBJECT MODULE PLACED IN .\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\uart_command.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\Valve_fucntion\uart_command.c LARGE OBJECTADVANCED WARNINGLEVEL(1) OP
+                    -TIMIZE(11,SIZE) BROWSE NOINTPROMOTE INTVECTOR(0X1800) INCDIR(..\..\Z-WAVE\INCLUDE;..\..\Z-WAVE\IO_DEFINES;.\BUILD_PRJ;.\
+                    -BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI_RELS;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI;C:\
+                    -KEIL_V5\C51\INC;..\APPLICATIONUTILITIES;..\APPLICATIONCOMMANDHANDLERS;..\..\ZLIB\CMDCLASS;..\..\ZLIB\DEVTYPES;..\..\ZLIB
+                    -\HANDLER;..\Valve_fucntion) DB OE NOCO SB LC CD DEFINE(BOOTLOADER_ENABLED,slave_enhanced_232,US,ZAF_BUILD_NO=52445,ZW_SE
+                    -CURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL,BANK
+                    -ING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLED) DEBUG PRINT(.\build_prj\SwitchOnOff_
+                    -slave_enhanced_232_OTA_ZW050x_TI_list\uart_command.lst) TABS(2) OBJECT(.\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW
+                    -050x_TI_Rels\uart_command.obj)
+
+line level    source
+
+   1          /****************************************************************************
+   2           *
+   3           * Copyright (c) 2001-2013
+   4           * Sigma Designs, Inc.
+   5           * All Rights Reserved
+   6           *
+   7           *---------------------------------------------------------------------------
+   8           *
+   9           * Description: Slave application for evaluation kit LED dimmer
+  10           *
+  11           * Author:   Tuan Nguyen Khac Phuong
+  12           *
+  13           * Last Changed By:  $User: NTT $
+  14           * Revision:         $Revision: 1.0 $
+  15           * Last Changed:     $Date: 2018-01-31 14:01:44 +0700 (We, 31 January 2018) $
+  16           
+  17           *
+  18           ****************************************************************************/
+  19          
+  20          
+  21          /****************************************************************************/
+  22          /*                              INCLUDE FILES                               */
+  23          /****************************************************************************/
+  24          #include <uart_command.h>
+   1      =1  
+   2      =1  /****************************************************************************/
+   3      =1  /*                      PRIVATE TYPES and DEFINITIONS                       */
+   4      =1  /****************************************************************************/
+   5      =1  /* serial Protocol handler states */
+   6      =1  
+   7      =1  #ifndef _UART_COMMAND_H_
+   8      =1  #define _UART_COMMAND_H_
+   9      =1  
+  10      =1  
+  11      =1  #define <ZW_typedefs.h>
+*** ERROR C301 IN LINE 11 OF ..\Valve_fucntion\uart_command.h: identifier expected
+  12      =1  
+  13      =1  /* defines for accessing serial protocol data */
+  14      =1  #define serFrameLen (*serBuf)
+  15      =1  #define serFrameType (*(serBuf + 1))
+  16      =1  #define serFrameCmd (*(serBuf + 2))
+  17      =1  #define serFrameDataPtr (serBuf + 3)
+  18      =1  
+  19      =1  #define SOF 0x01  /* Start Of Frame */
+  20      =1  #define ACK 0x06  /* Acknowledge successfull frame reception */
+  21      =1  #define NAK 0x15  /* Not Acknowledge successfull frame reception - please retransmit... */
+  22      =1  #define CAN 0x18  /* Frame received (from host) was dropped - waiting for ACK */
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 2   
+
+  23      =1  
+  24      =1  
+  25      =1  #define REQUEST                                         0x00
+  26      =1  #define RESPONSE                                        0x01
+  27      =1  
+  28      =1  /************************************************************/
+  29      =1  /* Structs and unions that can be used by the application   */
+  30      =1  /* to construct the frames to be sent                       */
+  31      =1  /************************************************************/
+  32      =1  
+  33      =1  
+  34      =1  typedef struct _ZW_UART_COMMON_FRAME_
+  35      =1  {
+  36      =1    BYTE length;
+*** ERROR C141 IN LINE 36 OF ..\Valve_fucntion\uart_command.h: syntax error near 'BYTE'
+*** ERROR C129 IN LINE 36 OF ..\Valve_fucntion\uart_command.h: missing ';' before 'length'
+  37      =1    BYTE cmd;
+  38      =1    BYTE type;
+  39      =1  }ZW_UART_COMMON_FRAME;
+  40      =1  
+  41      =1  
+  42      =1  
+  43      =1  typedef struct _ZW_UART_COMMAND_SET
+  44      =1  {
+  45      =1    BYTE length;
+  46      =1    BYTE cmd;
+  47      =1    BYTE type;
+  48      =1    BYTE value1;
+  49      =1    BYTE value2;
+  50      =1    BYTE value3;
+  51      =1    BYTE value4;
+  52      =1  }ZW_UART_COMMAND_SET;
+  53      =1  
+  54      =1  typedef struct _ZW_UART_COMMAND_REPORT
+  55      =1  {
+  56      =1    BYTE length;
+  57      =1    BYTE cmd;
+  58      =1    BYTE type;
+  59      =1    
+  60      =1    BYTE value1;
+  61      =1    BYTE value2;
+  62      =1    BYTE value3;
+  63      =1    BYTE value4;
+  64      =1    BYTE value5;
+  65      =1    BYTE value6;
+  66      =1    BYTE value7;
+  67      =1    BYTE value8;
+  68      =1    BYTE value9;
+  69      =1    BYTE value10;
+  70      =1    BYTE value11;
+  71      =1    BYTE value12;
+  72      =1    BYTE value13;
+  73      =1  }ZW_UART_COMMAND_REPORT;
+  74      =1  
+  75      =1  typedef struct _ZW_UART_COMMAND_GET
+  76      =1  {
+  77      =1    BYTE length;
+  78      =1    BYTE cmd;
+  79      =1    BYTE type;
+  80      =1    BYTE value;
+  81      =1  }ZW_UART_COMMAND_GET;
+  82      =1  
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 3   
+
+  83      =1  
+  84      =1  typedef union _ZW_UART_COMMAND
+  85      =1  {
+  86      =1    ZW_UART_COMMON_FRAME zw_uartcommand;
+  87      =1    ZW_UART_COMMAND_SET zw_uartcommandset;
+  88      =1    ZW_UART_COMMAND_GET zw_uartcommandget;
+  89      =1    ZW_UART_COMMAND_REPORT zw_uartcommandreport;
+  90      =1  }ZW_UART_COMMAND;
+  91      =1  
+  92      =1  
+  93      =1  
+  94      =1  
+  95      =1  /* Command Zwave to device*/
+  96      =1  #define COMMAND_STATUS          0x00
+  97      =1  #define COMMAND_VERSION         0x01
+  98      =1  #define COMMAND_ZW_CONNECT      0x02
+  99      =1  #define COMMAND_TIMER           0x03
+ 100      =1  #define COMMAND_TEMPERATURE     0x04
+ 101      =1  #define COMMAND_HUMIDITY        0x05
+ 102      =1  #define COMMAND_HEATER          0x06
+ 103      =1  #define COMMAND_ALARM           0x07
+ 104      =1  #define COMMAND_ACCELERATION    0x08
+ 105      =1  #define COMMAND_POWER_MODE      0x09
+ 106      =1  #define COMMAND_WAKEUP          0x0A
+ 107      =1  #define COMMAND_ZWAVE_RESET     0x0B
+ 108      =1  #define COMMAND_SWITCHBINARY    0x0C
+ 109      =1  #define COMMAND_METER           0x0D
+ 110      =1  #define COMMAND_FLOW            0x0E
+ 111      =1  #define COMMAND_VALVE           0x11
+ 112      =1  #define COMMAND_LEAK            0x12
+ 113      =1  
+ 114      =1  
+ 115      =1  #define COMMAND_END COMMAND_LEAK
+ 116      =1  
+ 117      =1  
+ 118      =1  /* Command Valve */
+ 119      =1  #define ZW_VALVE_GET    0x01 
+ 120      =1  #define ZW_VALVE_SET    0x02
+ 121      =1  #define ZW_VALVE_ON     0x03
+ 122      =1  #define ZW_VALVE_OFF    0x04
+ 123      =1  #define ZW_VALVE_RESET  0x05
+ 124      =1  
+ 125      =1  /* Command Zwave Status*/
+ 126      =1  #define ZW_SET_STATUS         0x01
+ 127      =1  #define ZW_GET_STATUS   0x02
+ 128      =1  #define ZW_REPORT_STATUS  0x03
+ 129      =1  
+ 130      =1  /* Command get version*/
+ 131      =1  #define ZW_SET_VERSION    0x01
+ 132      =1  #define ZW_GET_VERSION    0x02
+ 133      =1  #define ZW_REPORT_VERSION       0x03
+ 134      =1  
+ 135      =1  /* Command zwave reset*/
+ 136      =1  #define ZW_SET_RESET            0x01
+ 137      =1  #define ZW_GET_RESET            0x02
+ 138      =1  #define ZW_REPORT_RESET         0x03
+ 139      =1  
+ 140      =1  /* Command wakeup*/
+ 141      =1  #define ZW_SET_WAKEUP   0x01
+ 142      =1  #define ZW_GET_WAKEUP   0x02
+ 143      =1  #define ZW_REPORT_WAKEUP  0x03
+ 144      =1  
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 4   
+
+ 145      =1  /* Command z-wave inclusion Network*/
+ 146      =1  #define ZW_SET_CONNECT          0x01
+ 147      =1  #define ZW_GET_CONNECT          0x02
+ 148      =1  #define ZW_REPORT_CONNECT       0x03
+ 149      =1  #define ZW_CONNECT              0x01
+ 150      =1  #define ZW_DISCONNECT           0x00
+ 151      =1  
+ 152      =1  /* Command get/set Temperature*/
+ 153      =1  #define ZW_SETPOINT_SET_TEMPERATURE      0x01
+ 154      =1  #define ZW_SETPOINT_GET_TEMPERATURE      0x02
+ 155      =1  #define ZW_SETPOINT_REPORT_TEMPERATURE   0x03
+ 156      =1  #define ZW_GET_TEMPERATURE               0x04
+ 157      =1  #define ZW_REPORT_TEMPERATURE            0x05
+ 158      =1  
+ 159      =1  /* Command get Humidity*/
+ 160      =1  #define ZW_SET_HUMIDITY         0x01
+ 161      =1  #define ZW_GET_HUMIDITY         0x02
+ 162      =1  #define ZW_REPORT_HUMIDITY      0x03
+ 163      =1  
+ 164      =1  /* Command set/get Heater*/
+ 165      =1  #define ZW_MODESET_HEATER       0x01
+ 166      =1  #define ZW_MODEGET_HEATER       0x02
+ 167      =1  #define ZW_MODEREPORT_HEATER    0x03
+ 168      =1  #define ZW_MODESUPPORT_HEATER 0x04
+ 169      =1  
+ 170      =1  /* Command ACCELERATION */
+ 171      =1  #define ZW_ACCELERATION_GET_X   0x01
+ 172      =1  #define ZW_ACCELERATION_GET_Y   0x02
+ 173      =1  #define ZW_ACCELERATION_GET_Z   0x03
+ 174      =1  
+ 175      =1  /* Command Alarm*/
+ 176      =1  #define ZW_ALARM_SET            0x01
+ 177      =1  #define ZW_ALARM_GET            0x02
+ 178      =1  #define ZW_ALARM_REPORT         0x03
+ 179      =1  
+ 180      =1  /* Command Power Mode*/
+ 181      =1  #define ZW_POWER_SET            0x01
+ 182      =1  #define ZW_POWER_GET            0x02
+ 183      =1  #define ZW_POWER_HIGH_MODE      0x00
+ 184      =1  #define ZW_POWER_LOW_MODE       0x01
+ 185      =1  
+ 186      =1  /* Command Switch binary*/
+ 187      =1  #define ZW_SWITCHBINARY_SET   0x01
+ 188      =1  #define ZW_SWITCHBINARY_GET   0x02
+ 189      =1  #define ZW_SWITCHBINARY_REPORT  0x03
+ 190      =1  
+ 191      =1  /* Command Meter*/
+ 192      =1  #define ZW_METER_SET  0x01
+ 193      =1  #define ZW_METER_GET  0x02
+ 194      =1  #define ZW_METER_RESET  0x03
+ 195      =1  #define ZW_METER_REPORT 0x04
+ 196      =1  
+ 197      =1  /* Command Flow*/
+ 198      =1  #define ZW_FLOW_SET 0x01
+ 199      =1  #define ZW_FLOW_GET 0x02
+ 200      =1  #define ZW_FLOW_REPORT  0x03
+ 201      =1  
+ 202      =1  
+ 203      =1  #define  CMD_CLASS_BIN_ON 0x00
+ 204      =1  #define  CMD_CLASS_BIN_OFF 0xFF
+ 205      =1  
+ 206      =1  
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 5   
+
+ 207      =1  #define COMMAND_DEBUG 0x52
+ 208      =1  
+ 209      =1  /* Command Valve Leak */
+ 210      =1  #define ZW_LEAK     0x01
+ 211      =1  #define ZW_NON_LEAK 0x02
+ 212      =1  
+ 213      =1  /* Define UART for z_wave*/
+ 214      =1  //#define ZW_UART_WAIT_RECEIVE
+ 215      =1  //#define ZW_UART_REC_BYTE
+ 216      =1  
+ 217      =1  //#endif /*End _UART_COMMAND_H_*/
+  25          
+  26          /****************************************************************************/
+  27          /*                              PRIVATE DATA                                */
+  28          /****************************************************************************/
+  29          volatile BYTE ZW_UART_RECEIVE=0;
+  30          volatile BYTE ZW_UART_RECEIVE_STATUS=0;
+  31          
+  32          BYTE serBuf[SERBUF_MAX];
+  33          IBYTE serBufLen, con_state;
+  34          IBYTE bChecksum_RX;
+  35          volatile BOOL AckNakNeeded = FALSE;
+  36          volatile BOOL AckNak = ACK;
+  37          /****************************************************************************/
+  38          /*                           EXPORTED FUNCTIONS                             */
+  39          /****************************************************************************/
+  40          
+  41          
+  42          /*===========================   Uart_send_command   =========================
+  43          **    This function send command via uart.
+  44          **
+  45          **    Side effects:
+  46          **
+  47          **--------------------------------------------------------------------------*/
+  48          BOOL Uart_send_command(ZW_UART_COMMAND cmd)
+  49          {
+  50            BYTE* cmd_point;
+  51            BYTE j,bChecksum;
+  52            DWORD i;
+  53            for(j=1;j>0;j--)
+  54            {
+  55              bChecksum =0xFF;
+  56              ZW_UART_SEND_BYTE(SOF);
+  57              cmd_point= &cmd.zw_uartcommand.length;
+  58              i= *(cmd_point);
+  59              for(;i>0;i--)
+  60              {
+  61                ZW_UART_SEND_BYTE(*(cmd_point));
+  62                bChecksum ^= *(cmd_point++);
+  63              }
+  64              ZW_UART_SEND_BYTE(bChecksum);
+  65              AckNak = NAK;
+  66              AckNakNeeded = TRUE;  // Now we need an ACK...
+  67              for(i=100000;i>0;i--)
+  68              {
+  69                if(AckNakNeeded==FALSE)
+  70                {
+  71                  break;
+  72                }
+  73              }
+  74              if(AckNak == ACK)
+  75              {
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 6   
+
+  76                return TRUE;
+  77              }
+  78            }
+  79            return FALSE;
+  80          }
+  81          T_CON_TYPE Uart_update(BYTE acknowledge)
+  82          {
+  83            BYTE c;
+  84            T_CON_TYPE retVal = conIdle;
+  85            if(ZW_UART_REC_STATUS)
+  86            {
+  87              do
+  88              {
+  89                c = ZW_UART_REC_BYTE;
+  90                 switch (con_state)
+  91                {
+  92                  case stateSOFHunt :
+  93                    if (c == SOF)
+  94                    {
+  95                      bChecksum_RX = 0xff;
+  96                      serBufLen = 0;
+  97                      con_state++;
+  98                    }
+  99                    else
+ 100                    {
+ 101                      if (AckNakNeeded)
+ 102                      {
+ 103                        if (c == ACK)
+ 104                        {
+ 105                          retVal = conFrameSent;
+ 106                          AckNakNeeded = FALSE;  // Done
+ 107                          AckNak = ACK;
+ 108                        }
+ 109                        else if (c == NAK)
+ 110                        {
+ 111                          retVal = conTxTimeout;
+ 112                          AckNakNeeded = FALSE;
+ 113                          AckNak = NAK;
+ 114                        }
+ 115                        else
+ 116                        {
+ 117                          // Bogus character received...
+ 118                        }
+ 119                      }
+ 120                    }
+ 121                    break;
+ 122                  case stateLen :
+ 123                    // Check for length to be inside valid range
+ 124                    if ((c < FRAME_LENGTH_MIN) || (c > FRAME_LENGTH_MAX))
+ 125                    {
+ 126                      con_state = stateSOFHunt; // Restart looking for SOF
+ 127                      break;
+ 128                    }
+ 129                    // Drop through...  
+ 130          
+ 131                  case stateCmd :
+ 132                    if (serBufLen && (c > COMMAND_END))
+ 133                    {
+ 134                      con_state = stateSOFHunt; // Restart looking for SOF
+ 135                      break;
+ 136                    }
+ 137                    // Drop through...
+C51 COMPILER V9.54   UART_COMMAND                                                          11/02/2021 03:11:43 PAGE 7   
+
+ 138          
+ 139                  case stateType :
+ 140                    con_state++;
+ 141                    // Drop through...
+ 142                  case stateData :
+ 143                    if (serBufLen < SERBUF_MAX)
+ 144                    {
+ 145                      serBuf[serBufLen] = c;
+ 146                      serBufLen++;
+ 147                      bChecksum_RX ^= c;
+ 148                      if (serBufLen >= serFrameLen)
+ 149                      {
+ 150                        con_state++;
+ 151                      }
+ 152                    }
+ 153                    else
+ 154                    {
+ 155                      con_state++;
+ 156                    }
+ 157                    break;
+ 158                    
+ 159                  case stateChecksum :
+ 160                    /* Do we send ACK/NAK according to checksum... */
+ 161                    /* if not then the received frame is dropped! */
+ 162                  
+ 163                    if (acknowledge)
+ 164                    {
+ 165                      if (c == bChecksum_RX)
+ 166                      {   
+ 167                        ZW_UART_SEND_BYTE(ACK);
+ 168                        retVal = conFrameReceived;  // Tell THE world that we got a packet
+ 169                      }
+ 170                      else
+ 171                      {
+ 172                        ZW_UART_SEND_BYTE(NAK);       // Tell them something is wrong...
+ 173                        retVal = conFrameErr;
+ 174                      }
+ 175                    }
+ 176                    else
+ 177                    {
+ 178                      // We are in the process of looking for an acknowledge to a callback request
+ 179                      // Drop the new frame we received - we don't have time to handle it.
+ 180                      // Send a CAN to indicate what is happening...
+ 181                      ZW_UART_SEND_BYTE(CAN);
+ 182                    }
+ 183                    // Drop through
+ 184          
+ 185                  default :
+ 186                    con_state = stateSOFHunt; // Restat looking for SOF
+ 187                    break;
+ 188                }
+ 189              }while((retVal == conIdle) && ZW_UART_REC_STATUS);
+ 190            }
+ 191            return retVal;
+ 192          }
+*** WARNING C316 IN LINE 192 OF ..\Valve_fucntion\uart_command.c: unterminated conditionals
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  3 ERROR(S)

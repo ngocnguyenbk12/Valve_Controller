@@ -1,0 +1,15 @@
+main.c:742:11:Btn_read.part.0	8	static
+main.c:768:6:gpio_SetPin.part.0	8	static
+main.c:782:6:Valve_control.part.0	8	static
+main.c:115:6:memcopy	8	static
+main.c:125:6:HAL_UART_RxCpltCallback	16	static
+main.c:182:6:Flow_meter_cal	8	static
+main.c:188:6:HAL_GPIO_EXTI_Callback	8	static
+main.c:478:6:SystemClock_Config	88	static,ignoring_inline_asm
+main.c:742:11:Btn_read	8	static
+main.c:768:6:gpio_SetPin	8	static
+main.c:778:6:Delay_ms	8	static
+main.c:782:6:Valve_control	8	static
+main.c:205:6:State	24	static
+main.c:427:5:main	64	static,ignoring_inline_asm
+main.c:811:6:Error_Handler	0	static,ignoring_inline_asm

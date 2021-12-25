@@ -1,0 +1,3598 @@
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE ZW_TEST_INTERFACE_DRIVER
+OBJECT MODULE PLACED IN .\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_test_interface_driver.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\APPLICATIONUTILITIES\ZW_TEST_INTERFACE_DRIVER.C LARGE OBJECTADVANCED 
+                    -WARNINGLEVEL(1) OPTIMIZE(11,SIZE) BROWSE NOINTPROMOTE INTVECTOR(0X1800) INCDIR(..\..\Z-WAVE\INCLUDE;..\..\Z-WAVE\IO_DEFI
+                    -NES;.\BUILD_PRJ;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI_RELS;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232
+                    -_OTA_ZW050X_TI;C:\KEIL_V5\C51\INC;..\APPLICATIONUTILITIES;..\APPLICATIONCOMMANDHANDLERS;..\..\ZLIB\CMDCLASS;..\..\ZLIB\D
+                    -EVTYPES;..\..\ZLIB\HANDLER;..\Valve_fucntion) DB OE NOCO SB LC CD DEFINE(BOOTLOADER_ENABLED,slave_enhanced_232,US,ZAF_BU
+                    -ILD_NO=52445,ZW_SECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,NEW_NODEINFO
+                    -,ZW_SELF_HEAL,BANKING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLED,BOOTLOADER_ENABLED,
+                    -slave_enhanced_232,US,ZAF_BUILD_NO=52445,ZW_SECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTIN
+                    -G,ZW050x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL,BANKING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART
+                    -_ENABLED) DEBUG PRINT(.\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_list\ZW_test_interface_driver.lst) TABS(2
+                    -) OBJECT(.\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_test_interface_driver.obj)
+
+line level    source
+
+   1          /*
+   2           * ZW_test_interface_driver.c
+   3           *
+   4           *  Created on: Mar 27, 2011
+   5           *      Author: esban
+   6           */
+   7          
+   8          /* Put XDATA in XDATA_LOWER because upper XDATA is full on some targets */
+   9          #ifdef __C51__
+  10          #pragma userclass (xdata = LOWER)
+  11          #endif
+  12          
+  13          /****************************************************************************
+  14          
+  15           THIS SOFTWARE IS NOT COPYRIGHTED
+  16          
+  17           HP offers the following for use in the public domain.  HP makes no
+  18           warranty with regard to the software or it's performance and the
+  19           user accepts the software "AS IS" with all faults.
+  20          
+  21           HP DISCLAIMS ANY WARRANTIES, EXPRESS OR IMPLIED, WITH REGARD
+  22           TO THIS SOFTWARE INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  23           OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+  24          
+  25           ****************************************************************************/
+  26          
+  27          /****************************************************************************
+  28           *  Header: remcom.c,v 1.34 91/03/09 12:29:49 glenne Exp $
+  29           *
+  30           *  Module name: remcom.c $
+  31           *  Revision: 1.34 $
+  32           *  Date: 91/03/09 12:29:49 $
+  33           *  Contributor:     Lake Stevens Instrument Division$
+  34           *
+  35           *  Description:     low level support for gdb debugger. $
+  36           *
+  37           *  Considerations:  only works on target hardware $
+  38           *
+  39           *  Written by:      Glenn Engel $
+  40           *  ModuleState:     Experimental $
+  41           *
+  42           *  NOTES:           See Below $
+  43           *
+  44           *  Modified for 8051 by Anders Esbensen, Sigma Designs.
+  45           *
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 2   
+
+  46           *  This code has been extensively tested on the Fujitsu SPARClite demo board.
+  47           *
+  48           *  To enable debugger support, two things need to happen.  One, a
+  49           *  call to set_debug_traps() is necessary in order to allow any breakpoints
+  50           *  or error conditions to be properly intercepted and reported to gdb.
+  51           *  Two, a breakpoint needs to be generated to begin communication.  This
+  52           *  is most easily accomplished by a call to breakpoint().  Breakpoint()
+  53           *  simulates a breakpoint by executing a trap #1.
+  54           *
+  55           *************
+  56           *
+  57           *    The following gdb commands are supported:
+  58           *
+  59           * command          function                               Return value
+  60           *
+  61           *    g             return the value of the CPU registers  hex data or ENN
+  62           *    G             set the value of the CPU registers     OK or ENN
+  63           *
+  64           *    mAA..AA,LLLL  Read LLLL bytes at address AA..AA      hex data or ENN
+  65           *    MAA..AA,LLLL: Write LLLL bytes at address AA.AA      OK or ENN
+  66           *
+  67           *    c             Resume at current address              SNN   ( signal NN)
+  68           *    cAA..AA       Continue at address AA..AA             SNN
+  69           *
+  70           *    s             Step one instruction                   SNN
+  71           *    sAA..AA       Step one instruction from AA..AA       SNN
+  72           *
+  73           *    k             kill
+  74           *
+  75           *    ?             What was the last sigval ?             SNN   (signal NN)
+  76           *
+  77           * All commands and responses are sent with a packet which includes a
+  78           * checksum.  A packet consists of
+  79           *
+  80           * $<packet info>#<checksum>.
+  81           *
+  82           * where
+  83           * <packet info> :: <characters representing the command or response>
+  84           * <checksum>    :: < two hex digits computed as modulo 256 sum of <packetinfo>>
+  85           *
+  86           * When a packet is received, it is first acknowledged with either '+' or '-'.
+  87           * '+' indicates a successful transfer.  '-' indicates a failed transfer.
+  88           *
+  89           * Example:
+  90           *
+  91           * Host:                  Reply:
+  92           * $m0,10#2a               +$00010203040506070809101112131415#42
+  93           *
+  94           ****************************************************************************/
+  95          
+  96          #include "config_lib.h"
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * This header file contains defines for library version in a generalized way.
+   4      =1   *
+   5      =1   * @copyright 2019 Silicon Laboratories Inc.
+   6      =1   */
+   7      =1  #ifndef _CONFIG_LIB_H_
+   8      =1  #define _CONFIG_LIB_H_
+   9      =1  
+  10      =1  #ifdef LIBFILE
+  13      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 3   
+
+  14      =1  /*
+  15      =1   * The following two definitions (ZW_VERSION_MAJOR, ZW_VERSION_MINOR & ZW_VERSION_PATCH) specifies
+  16      =1   * the Z-Wave Library version. It is manually changed to match the version specified in the following PSP.
+  17      =1   * PSP14529-2A Product Specification for Z-Wave 500 Series Developer's Kit v6.81.05
+  18      =1   */
+  19      =1  #define ZW_VERSION_MAJOR 6
+  20      =1  #define ZW_VERSION_MINOR 10
+  21      =1  #define ZW_VERSION_PATCH 0
+  22      =1  
+  23      =1  /* Configuration defines for all Z-Wave libraries */
+  24      =1  
+  25      =1  /* Include support for ApplicationRfNotify API */
+  26      =1  #define APP_RF_NOTIFY
+  27      =1  
+  28      =1  #endif /* _CONFIG_LIB_H_ */
+  29      =1  
+  97          
+  98          #ifdef ZW_TEST_INTERFACE_DRIVER
+  99          
+ 100          #include <INTRINS.h>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  INTRINS.H
+   3      =1  
+   4      =1  Intrinsic functions for C51.
+   5      =1  Copyright (c) 1988-2010 Keil Elektronik GmbH and ARM Germany GmbH
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  #ifndef __INTRINS_H__
+  10      =1  #define __INTRINS_H__
+  11      =1  
+  12      =1  #pragma SAVE
+  13      =1  
+  14      =1  #if defined (__CX2__)
+  18      =1  
+  19      =1  extern void          _nop_     (void);
+  20      =1  extern bit           _testbit_ (bit);
+  21      =1  extern unsigned char _cror_    (unsigned char, unsigned char);
+  22      =1  extern unsigned int  _iror_    (unsigned int,  unsigned char);
+  23      =1  extern unsigned long _lror_    (unsigned long, unsigned char);
+  24      =1  extern unsigned char _crol_    (unsigned char, unsigned char);
+  25      =1  extern unsigned int  _irol_    (unsigned int,  unsigned char);
+  26      =1  extern unsigned long _lrol_    (unsigned long, unsigned char);
+  27      =1  extern unsigned char _chkfloat_(float);
+  28      =1  #if defined (__CX2__)
+  32      =1  #if !defined (__CX2__)
+  33      =1  extern void          _push_    (unsigned char _sfr);
+  34      =1  extern void          _pop_     (unsigned char _sfr);
+  35      =1  #endif
+  36      =1  
+  37      =1  #pragma RESTORE
+  38      =1  
+  39      =1  #endif
+  40      =1  
+ 101          #include <ZW050x.h>
+   1      =1  /*******************************  ZW050x.h  *****************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 4   
+
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Products that speak Z-Wave work together better
+  11      =1   *
+  12      =1   *              Copyright (c) 2008
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Inventra 8051 SFR defines for the Z-Wave ZW050x RF transceiver.
+  25      =1   *
+  26      =1   * Author:   Samer Seoud
+  27      =1   *
+  28      =1   * Last Changed By:  $Author: sse $
+  29      =1   * Revision:         $Revision: 9285 $
+  30      =1   * Last Changed:     $Date: 2007-09-11 16:07:39 +0200 (Tue, 11 Sep 2007) $
+  31      =1   *
+  32      =1   ****************************************************************************/
+  33      =1  #ifndef _ZW050X_H_
+  34      =1  #define _ZW050X_H_
+  35      =1  
+  36      =1  sfr SFRPAGE   = 0xFF;
+  37      =1  sfr ACC       = 0xE0;
+  38      =1  sfr SP        = 0x81;
+  39      =1  sfr PCON      = 0x87;
+  40      =1  sfr TCON      = 0x88;
+  41      =1  sfr TMOD      = 0x89;
+  42      =1  sfr TL0       = 0x8A;
+  43      =1  sfr TL1       = 0x8B;
+  44      =1  sfr TH0       = 0x8C;
+  45      =1  sfr TH1       = 0x8D;
+  46      =1  sfr IE        = 0xA8;
+  47      =1  sfr IP        = 0xB8;
+  48      =1  sfr PSW       = 0xD0;
+  49      =1  sfr IE_1      = 0xE8;
+  50      =1  sfr B         = 0xF0;
+  51      =1  sfr IP1       = 0xF8;
+  52      =1  sfr DPL       = 0x82;
+  53      =1  sfr DPH       = 0x83;
+  54      =1  sfr P0        = 0x80;
+  55      =1  sfr P1        = 0x90;
+  56      =1  sfr P2        = 0xA0;
+  57      =1  sfr P3        = 0xB0;
+  58      =1  sfr P0DIR     = 0xFD;
+  59      =1  sfr P1DIR     = 0xC9;
+  60      =1  sfr P2DIR     = 0xCA;
+  61      =1  sfr P3DIR     = 0xCB;
+  62      =1  
+  63      =1  /******  BIT accessible Registers ******/
+  64      =1  /*P0*/
+  65      =1  sbit P0b0  = P0^0;
+  66      =1  sbit P0b1  = P0^1;
+  67      =1  sbit P0b2  = P0^2;
+  68      =1  sbit P0b3  = P0^3;
+  69      =1  sbit P0b4  = P0^4;
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 5   
+
+  70      =1  sbit P0b5  = P0^5;
+  71      =1  sbit P0b6  = P0^6;
+  72      =1  sbit P0b7  = P0^7;
+  73      =1  
+  74      =1  
+  75      =1  /*P1*/
+  76      =1  sbit P1b0  = P1^0;
+  77      =1  sbit P1b1  = P1^1;
+  78      =1  sbit P1b2  = P1^2;
+  79      =1  sbit P1b3  = P1^3;
+  80      =1  sbit P1b4  = P1^4;
+  81      =1  sbit P1b5  = P1^5;
+  82      =1  sbit P1b6  = P1^6;
+  83      =1  sbit P1b7  = P1^7;
+  84      =1  
+  85      =1  /*P2*/
+  86      =1  sbit P2b0  = P2^0;
+  87      =1  sbit P2b1  = P2^1;
+  88      =1  sbit P2b2  = P2^2;
+  89      =1  sbit P2b3  = P2^3;
+  90      =1  sbit P2b4  = P2^4;
+  91      =1  sbit P2b5  = P2^5;
+  92      =1  sbit P2b6  = P2^6;
+  93      =1  sbit P2b7  = P2^7;
+  94      =1  
+  95      =1  /*P3*/
+  96      =1  sbit P3b0  = P3^0;
+  97      =1  sbit P3b1  = P3^1;
+  98      =1  sbit P3b4  = P3^4;
+  99      =1  sbit P3b5  = P3^5;
+ 100      =1  sbit P3b6  = P3^6;
+ 101      =1  sbit P3b7  = P3^7;
+ 102      =1  
+ 103      =1  /*  TCON  */
+ 104      =1  sbit TF1   = TCON^7;
+ 105      =1  sbit TR1   = TCON^6;
+ 106      =1  sbit TF0   = TCON^5;
+ 107      =1  sbit TR0   = TCON^4;
+ 108      =1  sbit IE1   = TCON^3;
+ 109      =1  sbit IT1   = TCON^2;
+ 110      =1  sbit IE0   = TCON^1;
+ 111      =1  sbit IT0   = TCON^0;
+ 112      =1  
+ 113      =1  /*IE*/
+ 114      =1  sbit EA     = IE^7;
+ 115      =1  sbit ES0    = IE^4;
+ 116      =1  sbit ET1    = IE^3;
+ 117      =1  sbit EX1    = IE^2;
+ 118      =1  sbit ET0    = IE^1;
+ 119      =1  sbit EX0    = IE^0;
+ 120      =1  
+ 121      =1  /*IP*/
+ 122      =1  sbit PS0    = IP^4;
+ 123      =1  sbit PT1    = IP^3;
+ 124      =1  sbit PX1    = IP^2;
+ 125      =1  sbit PT0    = IP^1;
+ 126      =1  sbit PX0    = IP^0;
+ 127      =1  
+ 128      =1  /*PSW*/
+ 129      =1  sbit CY    = PSW^7;
+ 130      =1  sbit AC    = PSW^6;
+ 131      =1  sbit F0    = PSW^5;
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 6   
+
+ 132      =1  sbit RS1   = PSW^4;
+ 133      =1  sbit RS0   = PSW^3;
+ 134      =1  sbit OV    = PSW^2;
+ 135      =1  sbit FL    = PSW^1;
+ 136      =1  sbit P     = PSW^0;
+ 137      =1  
+ 138      =1  /*IE_1*/
+ 139      =1  sbit ESPI0   = IE_1^7;
+ 140      =1  sbit EIR     = IE_1^6;
+ 141      =1  sbit EUSB    = IE_1^5;
+ 142      =1  sbit ES1     = IE_1^4;
+ 143      =1  sbit EADC    = IE_1^2;
+ 144      =1  sbit EGPT    = IE_1^1;
+ 145      =1  sbit ETRI    = IE_1^0;
+ 146      =1  
+ 147      =1  /*IP1*/
+ 148      =1  sbit PSPI0    = IP1^7;
+ 149      =1  sbit PIR      = IP1^6;
+ 150      =1  sbit PUSB     = IP1^5;
+ 151      =1  sbit PS1      = IP1^4;
+ 152      =1  sbit PADC     = IP1^2;
+ 153      =1  sbit PGPT     = IP1^1;
+ 154      =1  sbit PTRI     = IP1^0;
+ 155      =1  
+ 156      =1  /*SFR registers page select defines*/
+ 157      =1  #define P0_PAGE    /* ANY */
+ 158      =1  #define P1_PAGE    /* ANY */
+ 159      =1  #define P2_PAGE    /* ANY */
+ 160      =1  #define P3_PAGE    /* ANY */
+ 161      =1  // Auto-generated vvvvvvvvvvv
+ 162      =1  #define P0DIR_PAGE SFRPAGE=0x01
+ 163      =1  #define P1DIR_PAGE SFRPAGE=0x01
+ 164      =1  #define P2DIR_PAGE SFRPAGE=0x01
+ 165      =1  #define P3DIR_PAGE SFRPAGE=0x01
+ 166      =1    // Auto-generated ^^^^^^^^^^^^^^^^^^
+ 167      =1  #define IP1_PAGE   /* ANY */
+ 168      =1  #define B_PAGE     /* ANY */
+ 169      =1  #define IE1_PAGE   /* ANY */
+ 170      =1  #define A_PAGE     /* ANY */
+ 171      =1  #define PSW_PAGE   /* ANY */
+ 172      =1  #define IP_PAGE    /* ANY */
+ 173      =1  #define IE_PAGE    /* ANY */
+ 174      =1  #define P1_PAGE    /* ANY */
+ 175      =1  #define TH1_PAGE   /* ANY */
+ 176      =1  #define TH0_PAGE   /* ANY */
+ 177      =1  #define TL1_PAGE   /* ANY */
+ 178      =1  #define TL0_PAGE   /* ANY */
+ 179      =1  #define TMOD_PAGE  /* ANY */
+ 180      =1  #define TCON_PAGE  /* ANY */
+ 181      =1  #define PCON_PAGE  /* ANY */
+ 182      =1  #define DPH_PAGE   /* ANY */
+ 183      =1  #define DPL_PAGE   /* ANY */
+ 184      =1  #define SP_PAGE    /* ANY */
+ 185      =1  #define P0_PAGE    /* ANY */
+ 186      =1  
+ 187      =1  /*SFR registers bit defines*/
+ 188      =1  #define P0_BITS                        0xFF
+ 189      =1  #define P1_BITS                        0xFF
+ 190      =1  #define P2_BITS                        0xFF
+ 191      =1  #define P3_H_BITS                      0xF0
+ 192      =1  #define P3_RESERVED_BITS               0x0C
+ 193      =1  #define P3_L_BITS                      0x03
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 7   
+
+ 194      =1  #define SFRPAGE_RESERVED_BITS          0xFC
+ 195      =1  #define SFRPAGE_BITS                   0x03
+ 196      =1  
+ 197      =1  /* SFR macros. Sets correct page */
+ 198      =1  #define SFR_SET(r,v) {r##_PAGE;r=v;}
+ 199      =1  #define SFR_SET_MASK(r,v,m) {r##_PAGE;r=((r##)&~(m##))|((v##)&(m##));}
+ 200      =1  #define SFR_GET(d,r) {r##_PAGE;d=r;}
+ 201      =1  #define SFR_GET_MASK(d,v,r) {r##_PAGE;d=((r)&(v));}
+ 202      =1  #define SFR_OR(r,v) {r##_PAGE;r=(r|v);}
+ 203      =1  #define SFR_AND(r,v) {r##_PAGE;r=(r&v);}
+ 204      =1  
+ 205      =1  
+ 206      =1  
+ 207      =1  //ISR servicing external 0
+ 208      =1  #define INUM_INT0    0
+ 209      =1  
+ 210      =1  //ISR servicing timer 0
+ 211      =1  #define INUM_TIMER0  1
+ 212      =1  
+ 213      =1  //ISR servicing external 1
+ 214      =1  #define INUM_INT1    2
+ 215      =1  
+ 216      =1  //ISR servicing timer 1
+ 217      =1  #define INUM_TIMER1  3
+ 218      =1  
+ 219      =1  //ISR servicing serial port 0
+ 220      =1  #define INUM_SERIAL0 4
+ 221      =1  
+ 222      =1  //INUM servicing TRIAC
+ 223      =1  #define INUM_TRIAC   6
+ 224      =1  
+ 225      =1  //ISR servicing general purpose timer
+ 226      =1  #define INUM_GP_TIMER  7
+ 227      =1  
+ 228      =1  //ISR servicing ADC
+ 229      =1  #define INUM_ADC 8
+ 230      =1  
+ 231      =1  
+ 232      =1  //ISR servicing serial port 1
+ 233      =1  #define INUM_SERIAL1 10
+ 234      =1  
+ 235      =1  //ISR servicing USB
+ 236      =1  #define INUM_USB 11
+ 237      =1  
+ 238      =1  //ISR servicing IR
+ 239      =1  #define INUM_IR 12
+ 240      =1  
+ 241      =1  //ISR servicing SPI0
+ 242      =1  #define INUM_SPI0 13
+ 243      =1  
+ 244      =1  //NMI servicing NMI
+ 245      =1  #define INUM_NMI 14
+ 246      =1  
+ 247      =1  #endif /* _ZW050X_H_ */
+ 102          #include <ZW_pindefs.h>
+   1      =1  /****************************************************************************
+   2      =1   *
+   3      =1   * Copyright (c) 2001-2011
+   4      =1   * Sigma Designs, Inc.
+   5      =1   * All Rights Reserved
+   6      =1   *
+   7      =1   *---------------------------------------------------------------------------
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 8   
+
+   8      =1   *
+   9      =1   * Description: In/Out definitions Z-Wave Single Chips
+  10      =1   *
+  11      =1   * Author:   Ivar Jeppesen
+  12      =1   *
+  13      =1   * Last Changed By:  $Author: efh $
+  14      =1   * Revision:         $Revision: 23305 $
+  15      =1   * Last Changed:     $Date: 2012-09-04 08:36:50 +0200 (ti, 04 sep 2012) $
+  16      =1   *
+  17      =1   ****************************************************************************/
+  18      =1  #ifndef _ZW_PINDEFS_H_
+  19      =1  #define _ZW_PINDEFS_H_
+  20      =1  
+  21      =1  /****************************************************************************/
+  22      =1  /*                              INCLUDE FILES                               */
+  23      =1  /****************************************************************************/
+  24      =1  #ifdef __C51__
+  25      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  34      =2  #define _ZW_TYPEDEFS_H_
+  35      =2  
+  36      =2  #ifndef __C51__
+  44      =2  
+  45      =2  /****************************************************************************/
+  46      =2  /*                              INCLUDE FILES                               */
+  47      =2  /****************************************************************************/
+  48      =2  
+  49      =2  /****************************************************************************/
+  50      =2  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  51      =2  /****************************************************************************/
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 9   
+
+  52      =2  #ifndef BYTE
+  53      =2  typedef unsigned char   BYTE;
+  54      =2  typedef unsigned short  WORD;
+  55      =2  typedef unsigned long   DWORD;
+  56      =2  
+  57      =2  #define IIBYTE BYTE idata  /* Internal indexed data byte */
+  58      =2  #define IBYTE  BYTE data   /* Internal data byte */
+  59      =2  #define IWORD  WORD data   /* Internal data word */
+  60      =2  #define IDWORD DWORD data  /* Internal data double word*/
+  61      =2  
+  62      =2  #define XBYTE  BYTE xdata  /* External data byte */
+  63      =2  #define XWORD  WORD xdata  /* External data word */
+  64      =2  #define XDWORD DWORD xdata /* External data double word */
+  65      =2  #define BBYTE  BYTE bdata  /* Internal bit adressable byte */
+  66      =2  
+  67      =2  #define PBYTE  XBYTE
+  68      =2  #define PWORD  XWORD
+  69      =2  #define PDWORD XDWORD
+  70      =2  
+  71      =2  #define BOOL   bit         /* Internal bit */
+  72      =2  
+  73      =2  #define CODE   code        /* Used for defining callback function which allways */
+  74      =2                             /* resides in code space. */
+  75      =2  
+  76      =2  typedef BYTE * BYTE_P;
+  77      =2  typedef WORD * WORD_P;
+  78      =2  typedef DWORD * DWORD_P;
+  79      =2  
+  80      =2  typedef struct
+  81      =2  {
+  82      =2    BYTE anything;
+  83      =2  } sSomeXDATA4K;
+  84      =2  typedef sSomeXDATA4K * XDATA4K_P;
+  85      =2  #endif
+  86      =2  
+  87      =2  #ifndef EOF
+  88      =2  #define EOF (-1)
+  89      =2  #endif
+  90      =2  
+  91      =2  #ifndef NULL
+  92      =2  #define NULL  (0)
+  93      =2  #endif
+  94      =2  
+  95      =2  #ifndef TRUE
+  96      =2  #define TRUE  (1)
+  97      =2  #define FALSE (0)
+  98      =2  #endif
+  99      =2  
+ 100      =2  /* Define for making easy and consistent callback definitions */
+ 101      =2  #define VOID_CALLBACKFUNC(completedFunc)  void (CODE *completedFunc)
+ 102      =2  
+ 103      =2  /* Remove memory specifier byte from generic pointer
+ 104      =2     See also: http://www.keil.com/forum/3443/ */
+ 105      =2  #ifdef __C51__
+ 106      =2  #define STRIP_GENERIC_PTR(p) ((unsigned) (void *) (p))
+ 107      =2  /* Macros to test generic pointers for NULL-ness, even if they
+ 108      =2  have been promoted from memory specific pointers */
+ 109      =2  #define IS_NULL(x)  (STRIP_GENERIC_PTR(x) == 0)
+ 110      =2  #define NON_NULL(x) (STRIP_GENERIC_PTR(x) != 0)
+ 111      =2  #else
+ 115      =2  
+ 116      =2  #define UNUSED(x) x = x; /* Hack to silence warning C280 Unreferenced local variable */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 10  
+
+ 117      =2  #define UNUSED_CONST(x) if(x) ; /* Hack to silence warning C280 Unreferenced const variable */
+ 118      =2  
+ 119      =2  #define UIP_HTONL(x) x // C51 is big endian by default
+ 120      =2  
+ 121      =2  /****************************************************************************/
+ 122      =2  /*                                 MACROS                                   */
+ 123      =2  /****************************************************************************/
+ 124      =2  
+ 125      =2  /* offset of field m in a struct s */
+ 126      =2  #ifndef offsetof
+ 127      =2  #define offsetof(s,m)   (WORD)( (BYTE_P)&(((s *)0)->m) - (BYTE_P)0 )
+ 128      =2  #endif
+ 129      =2  
+ 130      =2  
+ 131      =2  #endif /* _ZW_TYPEDEFS_H_ */
+  26      =1  #endif /* __C51__ */
+  27      =1  
+  28      =1  /****************************************************************************/
+  29      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  30      =1  /****************************************************************************/
+  31      =1  /*!!!WARNING DO NOT MODIFY THESE VARIABLES ONLY USED BY THE Z-WAVE STACK !!!*/
+  32      =1  #ifdef __C51__
+  33      =1  extern IBYTE P0Shadow;
+  34      =1  extern IBYTE P1Shadow;
+  35      =1  extern IBYTE P2Shadow;
+  36      =1  extern IBYTE P3Shadow;
+  37      =1  
+  38      =1  extern IBYTE P0ShadowDIR;
+  39      =1  extern IBYTE P1ShadowDIR;
+  40      =1  extern IBYTE P2ShadowDIR;
+  41      =1  extern IBYTE P3ShadowDIR;
+  42      =1  #endif /* __C51__ */
+  43      =1  
+  44      =1  
+  45      =1  #ifdef __C51__
+  46      =1  /* Macros for I/O Port controlling */
+  47      =1  
+  48      =1  /* Set I/O pin as input:
+  49      =1   *    pin     - Z-Wave pin name
+  50      =1   *    pullup  - if not zero activate the internal pullup resistor
+  51      =1   */
+  52      =1  #if defined (ZW040x) || defined(ZW050x)
+  53      =1  /*Fix TO#02731*/
+  54      =1  #define PIN_IN(pin,pullup)  {pin##DIR_PAGE;(pin##SHADOWDIR |= (1<<pin)); (pullup)?(pin##SHADOW &=~(1<<pin)
+             -):(pin##SHADOW |= (1<<pin));pin##Port = pin##SHADOW;pin##DIR = pin##SHADOWDIR;}
+  55      =1  #endif /* #if defined (ZW040x) || defined(ZW050x) */
+  56      =1  
+  57      =1  
+  58      =1  /* Set I/O pin as output:
+  59      =1   *    pin     - Z-Wave pin name
+  60      =1   */
+  61      =1  #if defined (ZW040x) || defined(ZW050x)
+  62      =1  #define PIN_OUT(pin)  {pin##DIR_PAGE;(pin##SHADOWDIR &=~(1<<pin)) ;(pin##DIR = pin##SHADOWDIR);}
+  63      =1  #endif /* #if defined (ZW040x) || defined(ZW050x) */
+  64      =1  
+  65      =1  
+  66      =1  /* Read pin value:
+  67      =1   *    pin     - Z-Wave pin name
+  68      =1   */
+  69      =1  #define PIN_GET(pin)  (pin##Port & (1<<pin))
+  70      =1  
+  71      =1  /* Set output pin to 1:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 11  
+
+  72      =1   *    pin     - Z-Wave pin name
+  73      =1   */
+  74      =1   /*Fix TO#02731*/
+  75      =1  #define PIN_ON(pin)  {pin##SHADOW |= (1<<pin);pin##Port = pin##SHADOW;}
+  76      =1  #define PIN_HIGH(pin) {pin##SHADOW |= (1<<pin);pin##Port = pin##SHADOW;}
+  77      =1  
+  78      =1  /* Set output pin to 0:
+  79      =1   *    pin     - Z-Wave pin name
+  80      =1   */
+  81      =1   /*Fix TO#02731*/
+  82      =1  #define PIN_OFF(pin) {pin##SHADOW &= ~(1<<pin);pin##Port = pin##SHADOW;}
+  83      =1  #define PIN_LOW(pin) {pin##SHADOW &= ~(1<<pin);pin##Port = pin##SHADOW;}
+  84      =1  
+  85      =1  /* Toggle output pin:
+  86      =1   *    pin     - Z-Wave pin name
+  87      =1   */
+  88      =1   /*Fix TO#02731*/
+  89      =1  #define PIN_TOGGLE(pin) {pin##SHADOW ^= (1<<pin);pin##Port = pin##SHADOW;}
+  90      =1  
+  91      =1  /* Button pressed */
+  92      =1  #define BUTTON_PRESSED() ((PIN_GET(Button))?0:1)
+  93      =1  
+  94      =1  #endif
+  95      =1  
+  96      =1  
+  97      =1  #if defined (ZW040x) || defined(ZW050x)
+  98      =1  
+  99      =1  /* Z-Wave Button - INT1 */
+ 100      =1  #define ButtonPort          P1
+ 101      =1  #define ButtonSHADOW        P1Shadow
+ 102      =1  #define ButtonDIR           P1DIR
+ 103      =1  #define ButtonSHADOWDIR     P1ShadowDIR
+ 104      =1  #define ButtonDIR_PAGE      P1DIR_PAGE;
+ 105      =1  #define Button              1
+ 106      =1  
+ 107      =1  
+ 108      =1  /*ZW-Wave  EEPROM CS */
+ 109      =1  #define EECSPort          P2
+ 110      =1  #define EECSSHADOW        P2Shadow
+ 111      =1  #define EECSDIR           P2DIR
+ 112      =1  #define EECSSHADOWDIR     P2ShadowDIR
+ 113      =1  #define EECSDIR_PAGE      P2DIR_PAGE
+ 114      =1  #define EECS              5
+ 115      =1  
+ 116      =1  #define P00Port          P0
+ 117      =1  #define P00SHADOW        P0Shadow
+ 118      =1  #define P00DIR           P0DIR
+ 119      =1  #define P00SHADOWDIR     P0ShadowDIR
+ 120      =1  #define P00DIR_PAGE      P0DIR_PAGE
+ 121      =1  #define P00              0
+ 122      =1  
+ 123      =1  #define P01Port          P0
+ 124      =1  #define P01SHADOW        P0Shadow
+ 125      =1  #define P01DIR           P0DIR
+ 126      =1  #define P01SHADOWDIR     P0ShadowDIR
+ 127      =1  #define P01DIR_PAGE      P0DIR_PAGE
+ 128      =1  #define P01              1
+ 129      =1  
+ 130      =1  #define P02Port          P0
+ 131      =1  #define P02SHADOW        P0Shadow
+ 132      =1  #define P02DIR           P0DIR
+ 133      =1  #define P02SHADOWDIR     P0ShadowDIR
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 12  
+
+ 134      =1  #define P02DIR_PAGE      P0DIR_PAGE
+ 135      =1  #define P02              2
+ 136      =1  
+ 137      =1  #define P03Port          P0
+ 138      =1  #define P03SHADOW        P0Shadow
+ 139      =1  #define P03DIR           P0DIR
+ 140      =1  #define P03SHADOWDIR     P0ShadowDIR
+ 141      =1  #define P03DIR_PAGE      P0DIR_PAGE
+ 142      =1  #define P03              3
+ 143      =1  
+ 144      =1  #define P04Port          P0
+ 145      =1  #define P04SHADOW        P0Shadow
+ 146      =1  #define P04DIR           P0DIR
+ 147      =1  #define P04SHADOWDIR     P0ShadowDIR
+ 148      =1  #define P04DIR_PAGE      P0DIR_PAGE
+ 149      =1  #define P04              4
+ 150      =1  
+ 151      =1  #define P05Port          P0
+ 152      =1  #define P05SHADOW        P0Shadow
+ 153      =1  #define P05DIR           P0DIR
+ 154      =1  #define P05SHADOWDIR     P0ShadowDIR
+ 155      =1  #define P05DIR_PAGE      P0DIR_PAGE
+ 156      =1  #define P05              5
+ 157      =1  
+ 158      =1  #define P06Port          P0
+ 159      =1  #define P06SHADOW        P0Shadow
+ 160      =1  #define P06DIR           P0DIR
+ 161      =1  #define P06SHADOWDIR     P0ShadowDIR
+ 162      =1  #define P06DIR_PAGE      P0DIR_PAGE
+ 163      =1  #define P06              6
+ 164      =1  
+ 165      =1  #define P07Port          P0
+ 166      =1  #define P07SHADOW        P0Shadow
+ 167      =1  #define P07DIR           P0DIR
+ 168      =1  #define P07SHADOWDIR     P0ShadowDIR
+ 169      =1  #define P07DIR_PAGE      P0DIR_PAGE
+ 170      =1  #define P07              7
+ 171      =1  
+ 172      =1  #define P10Port          P1
+ 173      =1  #define P10SHADOW        P1Shadow
+ 174      =1  #define P10DIR           P1DIR
+ 175      =1  #define P10SHADOWDIR     P1ShadowDIR
+ 176      =1  #define P10DIR_PAGE      P1DIR_PAGE
+ 177      =1  #define P10              0
+ 178      =1  
+ 179      =1  #define P11Port          P1
+ 180      =1  #define P11SHADOW        P1Shadow
+ 181      =1  #define P11DIR           P1DIR
+ 182      =1  #define P11SHADOWDIR     P1ShadowDIR
+ 183      =1  #define P11DIR_PAGE      P1DIR_PAGE
+ 184      =1  #define P11              1
+ 185      =1  
+ 186      =1  #define P12Port          P1
+ 187      =1  #define P12SHADOW        P1Shadow
+ 188      =1  #define P12DIR           P1DIR
+ 189      =1  #define P12SHADOWDIR     P1ShadowDIR
+ 190      =1  #define P12DIR_PAGE      P1DIR_PAGE
+ 191      =1  #define P12              2
+ 192      =1  
+ 193      =1  #define P13Port          P1
+ 194      =1  #define P13SHADOW        P1Shadow
+ 195      =1  #define P13DIR           P1DIR
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 13  
+
+ 196      =1  #define P13SHADOWDIR     P1ShadowDIR
+ 197      =1  #define P13DIR_PAGE      P1DIR_PAGE
+ 198      =1  #define P13              3
+ 199      =1  
+ 200      =1  #define P14Port          P1
+ 201      =1  #define P14SHADOW        P1Shadow
+ 202      =1  #define P14DIR           P1DIR
+ 203      =1  #define P14SHADOWDIR     P1ShadowDIR
+ 204      =1  #define P14DIR_PAGE      P1DIR_PAGE
+ 205      =1  #define P14              4
+ 206      =1  
+ 207      =1  #define P15Port          P1
+ 208      =1  #define P15SHADOW        P1Shadow
+ 209      =1  #define P15DIR           P1DIR
+ 210      =1  #define P15SHADOWDIR     P1ShadowDIR
+ 211      =1  #define P15DIR_PAGE      P1DIR_PAGE
+ 212      =1  #define P15              5
+ 213      =1  
+ 214      =1  #define P16Port          P1
+ 215      =1  #define P16SHADOW        P1Shadow
+ 216      =1  #define P16DIR           P1DIR
+ 217      =1  #define P16SHADOWDIR     P1ShadowDIR
+ 218      =1  #define P16DIR_PAGE      P1DIR_PAGE
+ 219      =1  #define P16              6
+ 220      =1  
+ 221      =1  #define P17Port          P1
+ 222      =1  #define P17SHADOW        P1Shadow
+ 223      =1  #define P17DIR           P1DIR
+ 224      =1  #define P17SHADOWDIR     P1ShadowDIR
+ 225      =1  #define P17DIR_PAGE      P1DIR_PAGE
+ 226      =1  #define P17              7
+ 227      =1  
+ 228      =1  
+ 229      =1  #define P20Port          P2
+ 230      =1  #define P20SHADOW        P2Shadow
+ 231      =1  #define P20DIR           P2DIR
+ 232      =1  #define P20SHADOWDIR     P2ShadowDIR
+ 233      =1  #define P20DIR_PAGE      P2DIR_PAGE
+ 234      =1  #define P20              0
+ 235      =1  
+ 236      =1  #define P21Port          P2
+ 237      =1  #define P21SHADOW        P2Shadow
+ 238      =1  #define P21DIR           P2DIR
+ 239      =1  #define P21SHADOWDIR     P2ShadowDIR
+ 240      =1  #define P21DIR_PAGE      P2DIR_PAGE
+ 241      =1  #define P21              1
+ 242      =1  
+ 243      =1  #define P22Port          P2
+ 244      =1  #define P22SHADOW        P2Shadow
+ 245      =1  #define P22DIR           P2DIR
+ 246      =1  #define P22SHADOWDIR     P2ShadowDIR
+ 247      =1  #define P22DIR_PAGE      P2DIR_PAGE
+ 248      =1  #define P22              2
+ 249      =1  
+ 250      =1  #define P23Port          P2
+ 251      =1  #define P23SHADOW        P2Shadow
+ 252      =1  #define P23DIR           P2DIR
+ 253      =1  #define P23SHADOWDIR     P2ShadowDIR
+ 254      =1  #define P23DIR_PAGE      P2DIR_PAGE
+ 255      =1  #define P23              3
+ 256      =1  
+ 257      =1  #define P24Port          P2
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 14  
+
+ 258      =1  #define P24SHADOW        P2Shadow
+ 259      =1  #define P24DIR           P2DIR
+ 260      =1  #define P24SHADOWDIR     P2ShadowDIR
+ 261      =1  #define P24DIR_PAGE      P2DIR_PAGE
+ 262      =1  #define P24              4
+ 263      =1  
+ 264      =1  #define P25Port          P2
+ 265      =1  #define P25SHADOW        P2Shadow
+ 266      =1  #define P25DIR           P2DIR
+ 267      =1  #define P25SHADOWDIR     P2ShadowDIR
+ 268      =1  #define P25DIR_PAGE      P2DIR_PAGE
+ 269      =1  #define P25              5
+ 270      =1  
+ 271      =1  #define P26Port          P2
+ 272      =1  #define P26SHADOW        P2Shadow
+ 273      =1  #define P26DIR           P2DIR
+ 274      =1  #define P26SHADOWDIR     P2ShadowDIR
+ 275      =1  #define P26DIR_PAGE      P2DIR_PAGE
+ 276      =1  #define P26              6
+ 277      =1  
+ 278      =1  #define P27Port          P2
+ 279      =1  #define P27SHADOW        P2Shadow
+ 280      =1  #define P27DIR           P2DIR
+ 281      =1  #define P27SHADOWDIR     P2ShadowDIR
+ 282      =1  #define P27DIR_PAGE      P2DIR_PAGE
+ 283      =1  #define P27              7
+ 284      =1  
+ 285      =1  #define P30Port          P3
+ 286      =1  #define P30SHADOW        P3Shadow
+ 287      =1  #define P30DIR           P3DIR
+ 288      =1  #define P30SHADOWDIR     P3ShadowDIR
+ 289      =1  #define P30DIR_PAGE      P3DIR_PAGE
+ 290      =1  #define P30              0
+ 291      =1  
+ 292      =1  #define P31Port          P3
+ 293      =1  #define P31SHADOW        P3Shadow
+ 294      =1  #define P31DIR           P3DIR
+ 295      =1  #define P31SHADOWDIR     P3ShadowDIR
+ 296      =1  #define P31DIR_PAGE      P3DIR_PAGE
+ 297      =1  #define P31              1
+ 298      =1  
+ 299      =1  #define P34Port          P3
+ 300      =1  #define P34SHADOW        P3Shadow
+ 301      =1  #define P34DIR           P3DIR
+ 302      =1  #define P34SHADOWDIR     P3ShadowDIR
+ 303      =1  #define P34DIR_PAGE      P3DIR_PAGE
+ 304      =1  #define P34              4
+ 305      =1  
+ 306      =1  #define P35Port          P3
+ 307      =1  #define P35SHADOW        P3Shadow
+ 308      =1  #define P35DIR           P3DIR
+ 309      =1  #define P35SHADOWDIR     P3ShadowDIR
+ 310      =1  #define P35DIR_PAGE      P3DIR_PAGE
+ 311      =1  #define P35              5
+ 312      =1  
+ 313      =1  #define P36Port          P3
+ 314      =1  #define P36SHADOW        P3Shadow
+ 315      =1  #define P36DIR           P3DIR
+ 316      =1  #define P36SHADOWDIR     P3ShadowDIR
+ 317      =1  #define P36DIR_PAGE      P3DIR_PAGE
+ 318      =1  #define P36              6
+ 319      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 15  
+
+ 320      =1  #define P37Port          P3
+ 321      =1  #define P37SHADOW        P3Shadow
+ 322      =1  #define P37DIR           P3DIR
+ 323      =1  #define P37SHADOWDIR     P3ShadowDIR
+ 324      =1  #define P37DIR_PAGE      P3DIR_PAGE
+ 325      =1  #define P37              7
+ 326      =1  
+ 327      =1  /* IO function definitions
+ 328      =1  ^(#define ^(*Port^)^( +P[0-9]^)^)
+ 329      =1  ^1 #define ^2SHADOW     ^3
+ 330      =1  */
+ 331      =1  
+ 332      =1  /* Production Test Pin for Prod_Test_Dut, Pin 5 */
+ 333      =1  #define SSNPort          P0
+ 334      =1  #define SSNSHADOW        P0Shadow
+ 335      =1  #define SSNDIR           P0DIR
+ 336      =1  #define SSNSHADOWDIR     P0ShadowDIR
+ 337      =1  #define SSNDIR_PAGE      P0DIR_PAGE
+ 338      =1  #define SSN              4
+ 339      =1  
+ 340      =1  #define LED_OUT0Port          P0
+ 341      =1  #define LED_OUT0SHADOW        P0Shadow
+ 342      =1  #define LED_OUT0DIR           P0DIR
+ 343      =1  #define LED_OUT0SHADOWDIR     P0ShadowDIR
+ 344      =1  #define LED_OUT0DIR_PAGE      P0DIR_PAGE
+ 345      =1  #define LED_OUT0              4
+ 346      =1  
+ 347      =1  #define LED_OUT1Port          P0
+ 348      =1  #define LED_OUT1SHADOW        P0Shadow
+ 349      =1  #define LED_OUT1DIR           P0DIR
+ 350      =1  #define LED_OUT1SHADOWDIR     P0ShadowDIR
+ 351      =1  #define LED_OUT1DIR_PAGE      P0DIR_PAGE
+ 352      =1  #define LED_OUT1              5
+ 353      =1  
+ 354      =1  #define LED_OUT2Port          P0
+ 355      =1  #define LED_OUT2SHADOW        P0Shadow
+ 356      =1  #define LED_OUT2DIR           P0DIR
+ 357      =1  #define LED_OUT2SHADOWDIR     P0ShadowDIR
+ 358      =1  #define LED_OUT2DIR_PAGE      P0DIR_PAGE
+ 359      =1  #define LED_OUT2              6
+ 360      =1  
+ 361      =1  #define LED_OUT3Port          P0
+ 362      =1  #define LED_OUT3SHADOW        P0Shadow
+ 363      =1  #define LED_OUT3DIR           P0DIR
+ 364      =1  #define LED_OUT3SHADOWDIR     P0ShadowDIR
+ 365      =1  #define LED_OUT3DIR_PAGE      P0DIR_PAGE
+ 366      =1  #define LED_OUT3              7
+ 367      =1  
+ 368      =1  #define KP_OUT0Port          P0
+ 369      =1  #define KP_OUT0SHADOW        P0Shadow
+ 370      =1  #define KP_OUT0DIR           P0DIR
+ 371      =1  #define KP_OUT0SHADOWDIR     P0ShadowDIR
+ 372      =1  #define KP_OUT0DIR_PAGE      P0DIR_PAGE
+ 373      =1  #define KP_OUT0              0
+ 374      =1  
+ 375      =1  #define KP_OUT1Port          P0
+ 376      =1  #define KP_OUT1SHADOW        P0Shadow
+ 377      =1  #define KP_OUT1DIR           P0DIR
+ 378      =1  #define KP_OUT1SHADOWDIR     P0ShadowDIR
+ 379      =1  #define KP_OUT1DIR_PAGE      P0DIR_PAGE
+ 380      =1  #define KP_OUT1              1
+ 381      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 16  
+
+ 382      =1  #define KP_OUT2Port          P0
+ 383      =1  #define KP_OUT2SHADOW        P0Shadow
+ 384      =1  #define KP_OUT2DIR           P0DIR
+ 385      =1  #define KP_OUT2SHADOWDIR     P0ShadowDIR
+ 386      =1  #define KP_OUT2DIR_PAGE      P0DIR_PAGE
+ 387      =1  #define KP_OUT2              2
+ 388      =1  
+ 389      =1  #define KP_OUT3Port          P0
+ 390      =1  #define KP_OUT3SHADOW        P0Shadow
+ 391      =1  #define KP_OUT3DIR           P0DIR
+ 392      =1  #define KP_OUT3SHADOWDIR     P0ShadowDIR
+ 393      =1  #define KP_OUT3DIR_PAGE      P0DIR_PAGE
+ 394      =1  #define KP_OUT3              3
+ 395      =1  
+ 396      =1  #define KP_OUT4Port          P0
+ 397      =1  #define KP_OUT4SHADOW        P0Shadow
+ 398      =1  #define KP_OUT4DIR           P0DIR
+ 399      =1  #define KP_OUT4SHADOWDIR     P0ShadowDIR
+ 400      =1  #define KP_OUT4DIR_PAGE      P0DIR_PAGE
+ 401      =1  #define KP_OUT4              4
+ 402      =1  
+ 403      =1  #define KP_OUT5Port          P0
+ 404      =1  #define KP_OUT5SHADOW        P0Shadow
+ 405      =1  #define KP_OUT5DIR           P0DIR
+ 406      =1  #define KP_OUT5SHADOWDIR     P0ShadowDIR
+ 407      =1  #define KP_OUT5DIR_PAGE      P0DIR_PAGE
+ 408      =1  #define KP_OUT5              5
+ 409      =1  
+ 410      =1  #define KP_OUT6Port          P0
+ 411      =1  #define KP_OUT6SHADOW        P0Shadow
+ 412      =1  #define KP_OUT6DIR           P0DIR
+ 413      =1  #define KP_OUT6SHADOWDIR     P0ShadowDIR
+ 414      =1  #define KP_OUT6DIR_PAGE      P0DIR_PAGE
+ 415      =1  #define KP_OUT6              6
+ 416      =1  
+ 417      =1  #define KP_OUT7Port          P0
+ 418      =1  #define KP_OUT7SHADOW        P0Shadow
+ 419      =1  #define KP_OUT7DIR           P0DIR
+ 420      =1  #define KP_OUT7SHADOWDIR     P0ShadowDIR
+ 421      =1  #define KP_OUT7DIR_PAGE      P0DIR_PAGE
+ 422      =1  #define KP_OUT7              7
+ 423      =1  
+ 424      =1  #define KP_OUT8Port          P3
+ 425      =1  #define KP_OUT8SHADOW        P3Shadow
+ 426      =1  #define KP_OUT8DIR           P3DIR
+ 427      =1  #define KP_OUT8SHADOWDIR     P3ShadowDIR
+ 428      =1  #define KP_OUT8DIR_PAGE      P3DIR_PAGE
+ 429      =1  #define KP_OUT8              7
+ 430      =1  
+ 431      =1  #define KP_OUT9Port          P3
+ 432      =1  #define KP_OUT9SHADOW        P3Shadow
+ 433      =1  #define KP_OUT9DIR           P3DIR
+ 434      =1  #define KP_OUT9SHADOWDIR     P3ShadowDIR
+ 435      =1  #define KP_OUT9DIR_PAGE      P3DIR_PAGE
+ 436      =1  #define KP_OUT9              6
+ 437      =1  
+ 438      =1  #define KP_OUT10Port          P3
+ 439      =1  #define KP_OUT10SHADOW        P3Shadow
+ 440      =1  #define KP_OUT10DIR           P3DIR
+ 441      =1  #define KP_OUT10SHADOWDIR     P3ShadowDIR
+ 442      =1  #define KP_OUT10DIR_PAGE      P3DIR_PAGE
+ 443      =1  #define KP_OUT10              5
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 17  
+
+ 444      =1  
+ 445      =1  #define KP_OUT11Port          P3
+ 446      =1  #define KP_OUT11SHADOW        P3Shadow
+ 447      =1  #define KP_OUT11DIR           P3DIR
+ 448      =1  #define KP_OUT11SHADOWDIR     P3ShadowDIR
+ 449      =1  #define KP_OUT11DIR_PAGE      P3DIR_PAGE
+ 450      =1  #define KP_OUT11              4
+ 451      =1  
+ 452      =1  #define KP_OUT12Port          P3
+ 453      =1  #define KP_OUT12SHADOW        P3Shadow
+ 454      =1  #define KP_OUT12DIR           P3DIR
+ 455      =1  #define KP_OUT12SHADOWDIR     P3ShadowDIR
+ 456      =1  #define KP_OUT12DIR_PAGE      P3DIR_PAGE
+ 457      =1  #define KP_OUT12              1
+ 458      =1  
+ 459      =1  #define KP_OUT13Port          P3
+ 460      =1  #define KP_OUT13SHADOW        P3Shadow
+ 461      =1  #define KP_OUT13DIR           P3DIR
+ 462      =1  #define KP_OUT13SHADOWDIR     P3ShadowDIR
+ 463      =1  #define KP_OUT13DIR_PAGE      P3DIR_PAGE
+ 464      =1  #define KP_OUT13              0
+ 465      =1  
+ 466      =1  #define KP_OUT14Port          P2
+ 467      =1  #define KP_OUT14SHADOW        P2Shadow
+ 468      =1  #define KP_OUT14DIR           P2DIR
+ 469      =1  #define KP_OUT14SHADOWDIR     P2ShadowDIR
+ 470      =1  #define KP_OUT14DIR_PAGE      P2DIR_PAGE
+ 471      =1  #define KP_OUT14              1
+ 472      =1  
+ 473      =1  #define KP_OUT15Port          P2
+ 474      =1  #define KP_OUT15SHADOW        P2Shadow
+ 475      =1  #define KP_OUT15DIR           P2DIR
+ 476      =1  #define KP_OUT15SHADOWDIR     P2ShadowDIR
+ 477      =1  #define KP_OUT15DIR_PAGE      P2DIR_PAGE
+ 478      =1  #define KP_OUT15              0
+ 479      =1  
+ 480      =1  #define KP_IN0Port          P1
+ 481      =1  #define KP_IN0SHADOW        P1Shadow
+ 482      =1  #define KP_IN0DIR           P1DIR
+ 483      =1  #define KP_IN0SHADOWDIR     P1ShadowDIR
+ 484      =1  #define KP_IN0DIR_PAGE      P1DIR_PAGE
+ 485      =1  #define KP_IN0              0
+ 486      =1  
+ 487      =1  #define KP_IN1Port          P1
+ 488      =1  #define KP_IN1SHADOW        P1Shadow
+ 489      =1  #define KP_IN1DIR           P1DIR
+ 490      =1  #define KP_IN1SHADOWDIR     P1ShadowDIR
+ 491      =1  #define KP_IN1DIR_PAGE      P1DIR_PAGE
+ 492      =1  #define KP_IN1              1
+ 493      =1  
+ 494      =1  #define KP_IN2Port          P1
+ 495      =1  #define KP_IN2SHADOW        P1Shadow
+ 496      =1  #define KP_IN2DIR           P1DIR
+ 497      =1  #define KP_IN2SHADOWDIR     P1ShadowDIR
+ 498      =1  #define KP_IN2DIR_PAGE      P1DIR_PAGE
+ 499      =1  #define KP_IN2              2
+ 500      =1  
+ 501      =1  #define KP_IN3Port          P1
+ 502      =1  #define KP_IN3SHADOW        P1Shadow
+ 503      =1  #define KP_IN3DIR           P1DIR
+ 504      =1  #define KP_IN3SHADOWDIR     P1ShadowDIR
+ 505      =1  #define KP_IN3DIR_PAGE      P1DIR_PAGE
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 18  
+
+ 506      =1  #define KP_IN3              3
+ 507      =1  
+ 508      =1  #define KP_IN4Port          P1
+ 509      =1  #define KP_IN4SHADOW        P1Shadow
+ 510      =1  #define KP_IN4DIR           P1DIR
+ 511      =1  #define KP_IN4SHADOWDIR     P1ShadowDIR
+ 512      =1  #define KP_IN4DIR_PAGE      P1DIR_PAGE
+ 513      =1  #define KP_IN4              4
+ 514      =1  
+ 515      =1  #define KP_IN5Port          P1
+ 516      =1  #define KP_IN5SHADOW        P1Shadow
+ 517      =1  #define KP_IN5DIR           P1DIR
+ 518      =1  #define KP_IN5SHADOWDIR     P1ShadowDIR
+ 519      =1  #define KP_IN5DIR_PAGE      P1DIR_PAGE
+ 520      =1  #define KP_IN5              5
+ 521      =1  
+ 522      =1  #define KP_IN6Port          P1
+ 523      =1  #define KP_IN6SHADOW        P1Shadow
+ 524      =1  #define KP_IN6DIR           P1DIR
+ 525      =1  #define KP_IN6SHADOWDIR     P1ShadowDIR
+ 526      =1  #define KP_IN6DIR_PAGE      P1DIR_PAGE
+ 527      =1  #define KP_IN6              6
+ 528      =1  
+ 529      =1  #define KP_IN7Port          P1
+ 530      =1  #define KP_IN7SHADOW        P1Shadow
+ 531      =1  #define KP_IN7DIR           P1DIR
+ 532      =1  #define KP_IN7SHADOWDIR     P1ShadowDIR
+ 533      =1  #define KP_IN7DIR_PAGE      P1DIR_PAGE
+ 534      =1  #define KP_IN7              7
+ 535      =1  
+ 536      =1  #define INT0Port          P1
+ 537      =1  #define INT0SHADOW        P1Shadow
+ 538      =1  #define INT0DIR           P1DIR
+ 539      =1  #define INT0SHADOWDIR     P1ShadowDIR
+ 540      =1  #define INT0DIR_PAGE      P1DIR_PAGE
+ 541      =1  #define INT0              0
+ 542      =1  
+ 543      =1  #define INT1Port          P1
+ 544      =1  #define INT1SHADOW        P1Shadow
+ 545      =1  #define INT1DIR           P1DIR
+ 546      =1  #define INT1SHADOWDIR     P1ShadowDIR
+ 547      =1  #define INT1DIR_PAGE      P1DIR_PAGE
+ 548      =1  #define INT1              1
+ 549      =1  
+ 550      =1  #define INT2Port          P1
+ 551      =1  #define INT2SHADOW        P1Shadow
+ 552      =1  #define INT2DIR           P1DIR
+ 553      =1  #define INT2SHADOWDIR     P1ShadowDIR
+ 554      =1  #define INT2DIR_PAGE      P1DIR_PAGE
+ 555      =1  #define INT2              2
+ 556      =1  
+ 557      =1  #define INT3Port          P1
+ 558      =1  #define INT3SHADOW        P1Shadow
+ 559      =1  #define INT3DIR           P1DIR
+ 560      =1  #define INT3SHADOWDIR     P1ShadowDIR
+ 561      =1  #define INT3DIR_PAGE      P1DIR_PAGE
+ 562      =1  #define INT3              3
+ 563      =1  
+ 564      =1  #define INT4Port          P1
+ 565      =1  #define INT4SHADOW        P1Shadow
+ 566      =1  #define INT4DIR           P1DIR
+ 567      =1  #define INT4SHADOWDIR     P1ShadowDIR
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 19  
+
+ 568      =1  #define INT4DIR_PAGE      P1DIR_PAGE
+ 569      =1  #define INT4              4
+ 570      =1  
+ 571      =1  #define INT5Port          P1
+ 572      =1  #define INT5SHADOW        P1Shadow
+ 573      =1  #define INT5DIR           P1DIR
+ 574      =1  #define INT5SHADOWDIR     P1ShadowDIR
+ 575      =1  #define INT5DIR_PAGE      P1DIR_PAGE
+ 576      =1  #define INT5              5
+ 577      =1  
+ 578      =1  #define INT6Port          P1
+ 579      =1  #define INT6SHADOW        P1Shadow
+ 580      =1  #define INT6DIR           P1DIR
+ 581      =1  #define INT6SHADOWDIR     P1ShadowDIR
+ 582      =1  #define INT6DIR_PAGE      P1DIR_PAGE
+ 583      =1  #define INT6              6
+ 584      =1  
+ 585      =1  #define INT7Port          P1
+ 586      =1  #define INT7SHADOW        P1Shadow
+ 587      =1  #define INT7DIR           P1DIR
+ 588      =1  #define INT7SHADOWDIR     P1ShadowDIR
+ 589      =1  #define INT7DIR_PAGE      P1DIR_PAGE
+ 590      =1  #define INT7              7
+ 591      =1  
+ 592      =1  #define UART0_RXDPort          P2
+ 593      =1  #define UART0_RXDSHADOW        P2Shadow
+ 594      =1  #define UART0_RXDDIR           P2DIR
+ 595      =1  #define UART0_RXDSHADOWDIR     P2ShadowDIR
+ 596      =1  #define UART0_RXDDIR_PAGE      P2DIR_PAGE
+ 597      =1  #define UART0_RXD              0
+ 598      =1  
+ 599      =1  #define UART0_TXDPort          P2
+ 600      =1  #define UART0_TXDSHADOW        P2Shadow
+ 601      =1  #define UART0_TXDDIR           P2DIR
+ 602      =1  #define UART0_TXDSHADOWDIR     P2ShadowDIR
+ 603      =1  #define UART0_TXDDIR_PAGE      P2DIR_PAGE
+ 604      =1  #define UART0_TXD              1
+ 605      =1  
+ 606      =1  #define SPI1_MOSIPort          P2
+ 607      =1  #define SPI1_MOSISHADOW        P2Shadow
+ 608      =1  #define SPI1_MOSIDIR           P2DIR
+ 609      =1  #define SPI1_MOSISHADOWDIR     P2ShadowDIR
+ 610      =1  #define SPI1_MOSIDIR_PAGE      P2DIR_PAGE
+ 611      =1  #define SPI1_MOSI              2
+ 612      =1  
+ 613      =1  #define SPI1_MISOPort          P2
+ 614      =1  #define SPI1_MISOSHADOW        P2Shadow
+ 615      =1  #define SPI1_MISODIR           P2DIR
+ 616      =1  #define SPI1_MISOSHADOWDIR     P2ShadowDIR
+ 617      =1  #define SPI1_MISODIR_PAGE      P2DIR_PAGE
+ 618      =1  #define SPI1_MISO              3
+ 619      =1  
+ 620      =1  #define SPI1_SCKPort          P2
+ 621      =1  #define SPI1_SCKSHADOW        P2Shadow
+ 622      =1  #define SPI1_SCKDIR           P2DIR
+ 623      =1  #define SPI1_SCKSHADOWDIR     P2ShadowDIR
+ 624      =1  #define SPI1_SCKDIR_PAGE      P2DIR_PAGE
+ 625      =1  #define SPI1_SCK              4
+ 626      =1  
+ 627      =1  #define ISP_MISOPort          P2
+ 628      =1  #define ISP_MISOSHADOW        P2Shadow
+ 629      =1  #define ISP_MISODIR           P2DIR
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 20  
+
+ 630      =1  #define ISP_MISOSHADOWDIR     P2ShadowDIR
+ 631      =1  #define ISP_MISODIR_PAGE      P2DIR_PAGE
+ 632      =1  #define ISP_MISO              2
+ 633      =1  
+ 634      =1  #define ISP_MOSIPort          P2
+ 635      =1  #define ISP_MOSISHADOW        P2Shadow
+ 636      =1  #define ISP_MOSIDIR           P2DIR
+ 637      =1  #define ISP_MOSISHADOWDIR     P2ShadowDIR
+ 638      =1  #define ISP_MOSIDIR_PAGE      P2DIR_PAGE
+ 639      =1  #define ISP_MOSI              3
+ 640      =1  
+ 641      =1  #define ISP_SCKPort          P2
+ 642      =1  #define ISP_SCKSHADOW        P2Shadow
+ 643      =1  #define ISP_SCKDIR           P2DIR
+ 644      =1  #define ISP_SCKSHADOWDIR     P2ShadowDIR
+ 645      =1  #define ISP_SCKDIR_PAGE      P2DIR_PAGE
+ 646      =1  #define ISP_SCK              4
+ 647      =1  
+ 648      =1  #define IR_TX0Port          P3
+ 649      =1  #define IR_TX0SHADOW        P3Shadow
+ 650      =1  #define IR_TX0DIR           P3DIR
+ 651      =1  #define IR_TX0SHADOWDIR     P3ShadowDIR
+ 652      =1  #define IR_TX0DIR_PAGE      P3DIR_PAGE
+ 653      =1  #define IR_TX0              4
+ 654      =1  
+ 655      =1  #define IR_TX1Port          P3
+ 656      =1  #define IR_TX1SHADOW        P3Shadow
+ 657      =1  #define IR_TX1DIR           P3DIR
+ 658      =1  #define IR_TX1SHADOWDIR     P3ShadowDIR
+ 659      =1  #define IR_TX1DIR_PAGE      P3DIR_PAGE
+ 660      =1  #define IR_TX1              5
+ 661      =1  
+ 662      =1  #define IR_TX2Port          P3
+ 663      =1  #define IR_TX2SHADOW        P3Shadow
+ 664      =1  #define IR_TX2DIR           P3DIR
+ 665      =1  #define IR_TX2SHADOWDIR     P3ShadowDIR
+ 666      =1  #define IR_TX2DIR_PAGE      P3DIR_PAGE
+ 667      =1  #define IR_TX2              6
+ 668      =1  
+ 669      =1  #define ADC0Port          P3
+ 670      =1  #define ADC0SHADOW        P3Shadow
+ 671      =1  #define ADC0DIR           P3DIR
+ 672      =1  #define ADC0SHADOWDIR     P3ShadowDIR
+ 673      =1  #define ADC0DIR_PAGE      P3DIR_PAGE
+ 674      =1  #define ADC0              4
+ 675      =1  
+ 676      =1  #define ADC1Port          P3
+ 677      =1  #define ADC1SHADOW        P3Shadow
+ 678      =1  #define ADC1DIR           P3DIR
+ 679      =1  #define ADC1SHADOWDIR     P3ShadowDIR
+ 680      =1  #define ADC1DIR_PAGE      P3DIR_PAGE
+ 681      =1  #define ADC1              5
+ 682      =1  
+ 683      =1  #define ADC2Port          P3
+ 684      =1  #define ADC2SHADOW        P3Shadow
+ 685      =1  #define ADC2DIR           P3DIR
+ 686      =1  #define ADC2SHADOWDIR     P3ShadowDIR
+ 687      =1  #define ADC2DIR_PAGE      P3DIR_PAGE
+ 688      =1  #define ADC2              6
+ 689      =1  
+ 690      =1  #define ADC3Port          P3
+ 691      =1  #define ADC3SHADOW        P3Shadow
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 21  
+
+ 692      =1  #define ADC3DIR           P3DIR
+ 693      =1  #define ADC3SHADOWDIR     P3ShadowDIR
+ 694      =1  #define ADC3DIR_PAGE      P3DIR_PAGE
+ 695      =1  #define ADC3              7
+ 696      =1  
+ 697      =1  #define UART1_TXDPort          P3
+ 698      =1  #define UART1_TXDSHADOW        P3Shadow
+ 699      =1  #define UART1_TXDDIR           P3DIR
+ 700      =1  #define UART1_TXDSHADOWDIR     P3ShadowDIR
+ 701      =1  #define UART1_TXDDIR_PAGE      P3DIR_PAGE
+ 702      =1  #define UART1_TXD              1
+ 703      =1  
+ 704      =1  #define UART1_RXDPort          P3
+ 705      =1  #define UART1_RXDSHADOW        P3Shadow
+ 706      =1  #define UART1_RXDDIR           P3DIR
+ 707      =1  #define UART1_RXDSHADOWDIR     P3ShadowDIR
+ 708      =1  #define UART1_RXDDIR_PAGE      P3DIR_PAGE
+ 709      =1  #define UART1_RXD              0
+ 710      =1  
+ 711      =1  #define SPI0_SSNPort          P3
+ 712      =1  #define SPI0_SSNSHADOW        P3Shadow
+ 713      =1  #define SPI0_SSNDIR           P3DIR
+ 714      =1  #define SPI0_SSNSHADOWDIR     P3ShadowDIR
+ 715      =1  #define SPI0_SSNDIR_PAGE      P3DIR_PAGE
+ 716      =1  #define SPI0_SSN              0
+ 717      =1  
+ 718      =1  #define SPI0_MOSIPort          P2
+ 719      =1  #define SPI0_MOSISHADOW        P2Shadow
+ 720      =1  #define SPI0_MOSIDIR           P2DIR
+ 721      =1  #define SPI0_MOSISHADOWDIR     P2ShadowDIR
+ 722      =1  #define SPI0_MOSIDIR_PAGE      P2DIR_PAGE
+ 723      =1  #define SPI0_MOSI              5
+ 724      =1  
+ 725      =1  #define SPI0_MISOPort          P2
+ 726      =1  #define SPI0_MISOSHADOW        P2Shadow
+ 727      =1  #define SPI0_MISODIR           P2DIR
+ 728      =1  #define SPI0_MISOSHADOWDIR     P2ShadowDIR
+ 729      =1  #define SPI0_MISODIR_PAGE      P2DIR_PAGE
+ 730      =1  #define SPI0_MISO              6
+ 731      =1  
+ 732      =1  #define SPI0_SCKPort          P2
+ 733      =1  #define SPI0_SCKSHADOW        P2Shadow
+ 734      =1  #define SPI0_SCKDIR           P2DIR
+ 735      =1  #define SPI0_SCKSHADOWDIR     P2ShadowDIR
+ 736      =1  #define SPI0_SCKDIR_PAGE      P2DIR_PAGE
+ 737      =1  #define SPI0_SCK              7
+ 738      =1  
+ 739      =1  #define IR_RXPort          P3
+ 740      =1  #define IR_RXSHADOW        P3Shadow
+ 741      =1  #define IR_RXDIR           P3DIR
+ 742      =1  #define IR_RXSHADOWDIR     P3ShadowDIR
+ 743      =1  #define IR_RXDIR_PAGE      P3DIR_PAGE
+ 744      =1  #define IR_RX              1
+ 745      =1  
+ 746      =1  
+ 747      =1  #define FIREPort          P3
+ 748      =1  #define FIRESHADOW        P3Shadow
+ 749      =1  #define FIREDIR           P3DIR
+ 750      =1  #define FIRESHADOWDIR     P3ShadowDIR
+ 751      =1  #define FIREDIR_PAGE      P3DIR_PAGE
+ 752      =1  #define FIRE              6
+ 753      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 22  
+
+ 754      =1  #define TRIACPort          P3
+ 755      =1  #define TRIACSHADOW        P3Shadow
+ 756      =1  #define TRIACDIR           P3DIR
+ 757      =1  #define TRIACSHADOWDIR     P3ShadowDIR
+ 758      =1  #define TRIACDIR_PAGE      P3DIR_PAGE
+ 759      =1  #define TRIAC              6
+ 760      =1  
+ 761      =1  #define GP_PWMPort          P3
+ 762      =1  #define GP_PWMSHADOW        P3Shadow
+ 763      =1  #define GP_PWMDIR           P3DIR
+ 764      =1  #define GP_PWMSHADOWDIR     P3ShadowDIR
+ 765      =1  #define GP_PWMDIR_PAGE      P3DIR_PAGE
+ 766      =1  #define GP_PWM              7
+ 767      =1  
+ 768      =1  #define ZEROXPort          P3
+ 769      =1  #define ZEROXSHADOW        P3Shadow
+ 770      =1  #define ZEROXDIR           P3DIR
+ 771      =1  #define ZEROXSHADOWDIR     P3ShadowDIR
+ 772      =1  #define ZEROXDIR_PAGE      P3DIR_PAGE
+ 773      =1  #define ZEROX              7
+ 774      =1  
+ 775      =1  #define IR_PWMPort          P3
+ 776      =1  #define IR_PWMSHADOW        P3Shadow
+ 777      =1  #define IR_PWMDIR           P3DIR
+ 778      =1  #define IR_PWMSHADOWDIR     P3ShadowDIR
+ 779      =1  #define IR_PWMDIR_PAGE      P3DIR_PAGE
+ 780      =1  #define IR_PWM              7
+ 781      =1  
+ 782      =1  #endif /* #if defined (ZW040x) || defined(ZW050x) */
+ 783      =1  
+ 784      =1  #endif /* _ZW_PINDEFS_H_ */
+ 785      =1  
+ 103          #include <ZW_evaldefs.h>
+   1      =1  /****************************************************************************
+   2      =1   *
+   3      =1   * Copyright (c) 2001-2011
+   4      =1   * Sigma Designs, Inc.
+   5      =1   * All Rights Reserved
+   6      =1   *
+   7      =1   *---------------------------------------------------------------------------
+   8      =1   *
+   9      =1   * Description: IO definitions for the Z-Wave Evaluation board
+  10      =1   *
+  11      =1   * Author:   Ivar Jeppesen
+  12      =1   *
+  13      =1   * Last Changed By:  $Author: tro $
+  14      =1   * Revision:         $Revision: 25909 $
+  15      =1   * Last Changed:     $Date: 2013-05-29 14:49:43 +0200 (on, 29 maj 2013) $
+  16      =1   *
+  17      =1   ****************************************************************************/
+  18      =1  #ifndef _ZW_EVALDEFS_H_
+  19      =1  #define _ZW_EVALDEFS_H_
+  20      =1  
+  21      =1  /****************************************************************************/
+  22      =1  /*                              INCLUDE FILES                               */
+  23      =1  /****************************************************************************/
+  24      =1  
+  25      =1  /****************************************************************************/
+  26      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  27      =1  /****************************************************************************/
+  28      =1  
+  29      =1  /* Evaluation board LEDs */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 23  
+
+  30      =1  
+  31      =1  /* Turn LED on/off
+  32      =1   *  led - LED number
+  33      =1   */
+  34      =1  
+  35      =1  
+  36      =1  #define LED_ON(led)   PIN_OFF(LED##led)
+  37      =1  #define LED_OFF(led)  PIN_ON(LED##led)
+  38      =1  
+  39      =1  #define LED_TOGGLE(led) PIN_TOGGLE(LED##led)
+  40      =1  
+  41      =1  
+  42      =1  /* LED number       Z-Wave Device pin */
+  43      =1  
+  44      =1  /* old stuff.. need to be removed*/
+  45      =1  #define LEDZM4102_1Port       P1
+  46      =1  #define LEDZM4102_1SHADOW     P1Shadow
+  47      =1  #define LEDZM4102_1SHADOWDIR  P1ShadowDIR
+  48      =1  #define LEDZM4102_1DIR        P1DIR
+  49      =1  #define LEDZM4102_1DIR_PAGE   P1DIR_PAGE
+  50      =1  #define LEDZM4102_1           0
+  51      =1  
+  52      =1  #ifdef ZM5202
+  70      =1  /*LED1 P0_7*/
+  71      =1  #define LED1Port        P0
+  72      =1  #define LED1SHADOW      P0Shadow
+  73      =1  #define LED1SHADOWDIR   P0ShadowDIR
+  74      =1  #define LED1DIR         P0DIR
+  75      =1  #define LED1DIR_PAGE    P0DIR_PAGE
+  76      =1  #define LED1            7
+  77      =1  
+  78      =1  /*LED2 P3_7*/
+  79      =1  #define LED2Port       P3
+  80      =1  #define LED2SHADOW     P3Shadow
+  81      =1  #define LED2SHADOWDIR  P3ShadowDIR
+  82      =1  #define LED2DIR        P3DIR
+  83      =1  #define LED2DIR_PAGE   P3DIR_PAGE
+  84      =1  #define LED2           7
+  85      =1  
+  86      =1  /*LED3 P1_0*/
+  87      =1  #define LED3Port       P1
+  88      =1  #define LED3SHADOW     P1Shadow
+  89      =1  #define LED3SHADOWDIR  P1ShadowDIR
+  90      =1  #define LED3DIR        P1DIR
+  91      =1  #define LED3DIR_PAGE   P1DIR_PAGE
+  92      =1  #define LED3           0
+  93      =1  
+  94      =1  /*LED4 P1_2*/
+  95      =1  #define LED4Port        P1
+  96      =1  #define LED4SHADOW      P1Shadow
+  97      =1  #define LED4SHADOWDIR   P1ShadowDIR
+  98      =1  #define LED4DIR         P1DIR
+  99      =1  #define LED4DIR_PAGE    P1DIR_PAGE
+ 100      =1  #define LED4            2
+ 101      =1  #endif
+ 102      =1  
+ 103      =1  
+ 104      =1  #endif /* _ZW_EVALDEFS_H_ */
+ 104          #include <ZW_uart_api.h>
+   1      =1  /***************************************************************************
+   2      =1  *
+   3      =1  * Copyright (c) 2001-2012
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 24  
+
+   4      =1  * Sigma Designs, Inc.
+   5      =1  * All Rights Reserved
+   6      =1  *
+   7      =1  *---------------------------------------------------------------------------
+   8      =1  *
+   9      =1  * Description: Interface driver for the 500 Series Z-Wave Single Chip
+  10      =1  *              built-in UART's
+  11      =1  *
+  12      =1  * Author:      Morten Vested Olesen and Jess Christensen
+  13      =1  *
+  14      =1  * Last Changed By:  $Author: jsi $
+  15      =1  * Revision:         $Revision: 30544 $
+  16      =1  * Last Changed:     $Date: 2015-01-09 14:18:09 +0100 (fr, 09 jan 2015) $
+  17      =1  *
+  18      =1  ****************************************************************************/
+  19      =1  #ifndef _ZW_UART_API_H_
+  20      =1  #define _ZW_UART_API_H_
+  21      =1  
+  22      =1  /***************************************************************************/
+  23      =1  /*                              INCLUDE FILES                              */
+  24      =1  /***************************************************************************/
+  25      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  26      =1  
+  27      =1  /****************************************************************************/
+  28      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  29      =1  /****************************************************************************/
+  30      =1  
+  31      =1  /* Macroes for debug output */
+  32      =1  #define ZW_DEBUG_BAUD_RATE    1152
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 25  
+
+  33      =1  
+  34      =1  #ifdef ZW_DEBUG
+  63      =1  #ifdef ZW_DEBUG_USB
+  74      =1  #ifdef ZW_DEBUG_UART0
+  83      =1  #define ZW_DEBUG_INIT(baud)
+  84      =1  #define ZW_DEBUG_SEND_BYTE(bData)
+  85      =1  #define ZW_DEBUG_SEND_NUM(bData)
+  86      =1  #define ZW_DEBUG_SEND_WORD_NUM(bData)
+  87      =1  #define ZW_DEBUG_SEND_NL()
+  88      =1  #define ZW_DEBUG_SEND_STR(STR)
+  89      =1  #define ZW_DEBUG_TX_STATUS()
+  90      =1  #endif /* ZW_DEBUG_UART0*/
+  91      =1  #endif /* ZW_DEBUG_USB */
+  92      =1  #endif /* ZW_DEBUG */
+  93      =1  
+  94      =1  #define ZW_UART0_INIT(baud)        ZW_UART0_init(baud, TRUE, FALSE)
+  95      =1  #define ZW_UART0_SEND_BYTE(bData)  ZW_UART0_tx_send_byte(bData)
+  96      =1  #define ZW_UART0_SEND_NUM(bData)   ZW_UART0_tx_send_num(bData)
+  97      =1  #define ZW_UART0_SEND_DEC(bData)   ZW_UART0_tx_send_dec(bData)
+  98      =1  #define ZW_UART0_REC_STATUS        (ZW_UART0_rx_int_get())
+  99      =1  #define ZW_UART0_REC_BYTE          (ZW_UART0_rx_data_wait_get())
+ 100      =1  #define ZW_UART0_SEND_NL()         ZW_UART0_tx_send_nl()
+ 101      =1  #define ZW_UART0_SEND_STATUS       (ZW_UART0_tx_active_get())
+ 102      =1  #define ZW_UART0_SEND_STR(STR)     (ZW_UART0_tx_send_str(STR))
+ 103      =1  
+ 104      =1  #define ZW_UART_INIT(baud)        ZW_UART1_init(baud, TRUE, FALSE)
+ 105      =1  #define ZW_UART_SEND_BYTE(bData)  ZW_UART1_tx_send_byte(bData)
+ 106      =1  #define ZW_UART_SEND_NUM(bData)   ZW_UART1_tx_send_num(bData)
+ 107      =1  #define ZW_UART_REC_STATUS        (ZW_UART1_rx_int_get())
+ 108      =1  #define ZW_UART_REC_BYTE          (ZW_UART1_rx_data_wait_get())
+ 109      =1  #define ZW_UART_SEND_NL()         ZW_UART1_tx_send_nl()
+ 110      =1  #define ZW_UART_SEND_STATUS       (ZW_UART1_tx_int_get())
+ 111      =1  #define ZW_UART_SEND_STR(STR)     (ZW_UART1_tx_send_str(STR))
+ 112      =1  
+ 113      =1  #define UART_RX_DMA_STATUS_LOD       0x80
+ 114      =1  #define UART_RX_DMA_STATUS_EOR       0x40
+ 115      =1  #define UART_RX_DMA_STATUS_BUFFULL   0x20
+ 116      =1  #define UART_RX_DMA_STATUS_RUNNING   0x10
+ 117      =1  #define UART_RX_DMA_STATUS_CURBUF1   0x02
+ 118      =1  
+ 119      =1  #define UART_RX_DMA_LOD_INT_EN       0x20
+ 120      =1  #define UART_RX_DMA_SWITCH_COUNT     0x08
+ 121      =1  #define UART_RX_DMA_SWITCH_FULL      0x04
+ 122      =1  #define UART_RX_DMA_SWITCH_EOR       0x01
+ 123      =1  
+ 124      =1  #define UART_TX_DMA_STATUS_SLOW_XRAM 0x80
+ 125      =1  #define UART_TX_DMA_STATUS_RUNNING   0x10
+ 126      =1  
+ 127      =1  /***************************************************************************/
+ 128      =1  /*                              EXPORTED DATA                              */
+ 129      =1  /***************************************************************************/
+ 130      =1  
+ 131      =1  /***************************************************************************/
+ 132      =1  /*                           EXPORTED FUNCTIONS                            */
+ 133      =1  /***************************************************************************/
+ 134      =1  
+ 135      =1  /*===============================   ZW_UART_init   =============================
+ 136      =1  **  Initializes UART0.
+ 137      =1  **  Optionally enables transmit and/or receive, clears the rx and tx interrupt
+ 138      =1  **  flags, and sets the specified baudrate.
+ 139      =1  **
+ 140      =1  **  Side effects:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 26  
+
+ 141      =1  **--------------------------------------------------------------------------*/
+ 142      =1  void             /*RET Nothing */
+ 143      =1  ZW_UART_init(
+ 144      =1    WORD bBaudRate,  /* IN  Baud rate / 100 (e.g. 96 => 9600baud/s, 1152 => 115200baud/s) */
+ 145      =1    BYTE bEnableTx,  /* IN  TRUE: Tx enabled, FALSE: Tx disabled */
+ 146      =1    BYTE bEnableRx); /* IN  TRUE: Rx enabled, FALSE: Rx disabled */
+ 147      =1  
+ 148      =1  /*===============================   ZW_UART0_init   =============================
+ 149      =1  **  Initializes UART0.
+ 150      =1  **  Optionally enables transmit and/or receive, clears the rx and tx interrupt
+ 151      =1  **  flags, and sets the specified baudrate.
+ 152      =1  **
+ 153      =1  **  Side effects:
+ 154      =1  **--------------------------------------------------------------------------*/
+ 155      =1  void             /*RET Nothing */
+ 156      =1  ZW_UART0_init(
+ 157      =1    WORD bBaudRate,  /* IN  Baud rate / 100 (e.g. 96 => 9600baud/s, 1152 => 115200baud/s) */
+ 158      =1    BYTE bEnableTx,  /* IN  TRUE: Tx enabled, FALSE: Tx disabled */
+ 159      =1    BYTE bEnableRx); /* IN  TRUE: Rx enabled, FALSE: Rx disabled */
+ 160      =1  
+ 161      =1  /*==============================   ZW_UART0_INT_ENABLE  =============================
+ 162      =1  **  Enables UART0 interrupt
+ 163      =1  **
+ 164      =1  **    Side effects:
+ 165      =1  **--------------------------------------------------------------------------*/
+ 166      =1  
+ 167      =1  #define ZW_UART0_INT_ENABLE  ES0=1
+ 168      =1  
+ 169      =1  /*==============================   ZW_UART0_INT_DISABLE  =============================
+ 170      =1  **  Disables UART0 interrupt
+ 171      =1  **
+ 172      =1  **    Side effects:
+ 173      =1  **--------------------------------------------------------------------------*/
+ 174      =1  
+ 175      =1  #define ZW_UART0_INT_DISABLE ES0=0
+ 176      =1  
+ 177      =1  /*===============================   ZW_UART_tx_send_byte   ========================
+ 178      =1  **  Wait until UART0 Tx is idle, then write data byte to UART0 transmit register
+ 179      =1  **
+ 180      =1  **    Side effects: waits until UART0 Tx is idle
+ 181      =1  **--------------------------------------------------------------------------*/
+ 182      =1  void
+ 183      =1  ZW_UART_tx_send_byte(
+ 184      =1    BYTE bData);  /* IN a byte to written to the UART transmit register.*/
+ 185      =1  
+ 186      =1  /*===========================  ZW_UART_tx_send_dec  ==========================
+ 187      =1  **  Converts a byte to a two-digit decimal ASCII representation,
+ 188      =1  **  and transmits it over UART0.
+ 189      =1  **
+ 190      =1  **    Side effects:
+ 191      =1  **
+ 192      =1  **--------------------------------------------------------------------------*/
+ 193      =1  void            /*RET Nothing */
+ 194      =1  ZW_UART_tx_send_dec(
+ 195      =1    BYTE bData);  /* IN data to send */
+ 196      =1  
+ 197      =1  /*===========================  ZW_UART_tx_send_hex  ==========================
+ 198      =1  **  Converts a byte to a two-byte hexadecimal ASCII representation,
+ 199      =1  **  and transmits it over UART0.
+ 200      =1  **
+ 201      =1  **    Side effects:
+ 202      =1  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 27  
+
+ 203      =1  **--------------------------------------------------------------------------*/
+ 204      =1  #define ZW_UART_tx_send_num ZW_UART_tx_send_hex
+ 205      =1  
+ 206      =1  void            /*RET Nothing */
+ 207      =1  ZW_UART_tx_send_hex(
+ 208      =1    BYTE bData);   /* IN data to send */
+ 209      =1  
+ 210      =1  
+ 211      =1  /*===========================  ZW_UART_tx_send_w_num  ==========================
+ 212      =1  **  Converts a WORD to a 4-byte hexadecimal ASCII representation,
+ 213      =1  **  and transmits it over UART0.
+ 214      =1  **
+ 215      =1  **    Side effects:
+ 216      =1  **
+ 217      =1  **--------------------------------------------------------------------------*/
+ 218      =1  void            /*RET Nothing */
+ 219      =1  ZW_UART_tx_send_w_num(
+ 220      =1    WORD bData);   /* IN data to send */
+ 221      =1  
+ 222      =1  /*============================   ZW_UART_tx_send_str   ========================
+ 223      =1  **  Transmit a null terminated string over UART0.
+ 224      =1  **  The null data is not transmitted.
+ 225      =1  **
+ 226      =1  **    Side effects:
+ 227      =1  **
+ 228      =1  **--------------------------------------------------------------------------*/
+ 229      =1  void          /*RET Nothing */
+ 230      =1  ZW_UART_tx_send_str(
+ 231      =1    BYTE_P str); /* IN String pointer */
+ 232      =1  
+ 233      =1  /*=============================   ZW_UART_send_nl   =========================
+ 234      =1  **  Transmit CR + LF over UART0.
+ 235      =1  **
+ 236      =1  **    Side effects:
+ 237      =1  **
+ 238      =1  **--------------------------------------------------------------------------*/
+ 239      =1  void                /*RET Nothing */
+ 240      =1  ZW_UART_tx_send_nl( void ); /*IN Nothing */
+ 241      =1  
+ 242      =1  /*===============================   ZW_UART_tx_active_get   ========================
+ 243      =1  **  This function checks if the UART0 is sending.
+ 244      =1  **
+ 245      =1  **    Side effects:
+ 246      =1  **--------------------------------------------------------------------------*/
+ 247      =1  
+ 248      =1  BYTE    /* RET zero (0x00): UART0 tx is idle,
+ 249      =1           *     non-zero:  : UART0 tx is active     */
+ 250      =1  ZW_UART_tx_active_get(void);
+ 251      =1  
+ 252      =1  
+ 253      =1  /*===============================   ZW_UART0_rx_int_clear   ========================
+ 254      =1  **  Clear the UART0 Rx interrupt flag
+ 255      =1  **
+ 256      =1  **    Side effects:
+ 257      =1  **--------------------------------------------------------------------------*/
+ 258      =1  void
+ 259      =1  ZW_UART0_rx_int_clear(void);
+ 260      =1  
+ 261      =1  /*=============================   ZW_UART0_tx_int_clear   ========================
+ 262      =1  **  Clear the UART0 Tx interrupt flag
+ 263      =1  **
+ 264      =1  **    Side effects:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 28  
+
+ 265      =1  **--------------------------------------------------------------------------*/
+ 266      =1  void
+ 267      =1  ZW_UART0_tx_int_clear(void);
+ 268      =1  
+ 269      =1  /*===============================   ZW_UART0_rx_data_wait_get   ========================
+ 270      =1  **  Read the content of the UART0 receive register
+ 271      =1  **
+ 272      =1  **    Side effects:
+ 273      =1  **--------------------------------------------------------------------------*/
+ 274      =1  BYTE    /* RET the content of the receive register*/
+ 275      =1  ZW_UART0_rx_data_wait_get(void);
+ 276      =1  
+ 277      =1  /*===============================   ZW_UART0_rx_data_get   ========================
+ 278      =1  **  Read the content of the UART0 receive register
+ 279      =1  **
+ 280      =1  **    Side effects:
+ 281      =1  **--------------------------------------------------------------------------*/
+ 282      =1  
+ 283      =1  BYTE    /* RET the content of the receive register*/
+ 284      =1  ZW_UART0_rx_data_get(void);
+ 285      =1  
+ 286      =1  /*===============================   ZW_UART0_tx_data_set   ========================
+ 287      =1  **  Write data byte to UART0 transmit register
+ 288      =1  **
+ 289      =1  **    Side effects:
+ 290      =1  **--------------------------------------------------------------------------*/
+ 291      =1  void
+ 292      =1  ZW_UART0_tx_data_set(
+ 293      =1    BYTE txByte);  /* IN a byte to written to the UART transmit register.*/
+ 294      =1  
+ 295      =1  /*===============================   ZW_UART0_tx_send_byte   ========================
+ 296      =1  **  Wait until UART0 Tx is idle, then write data byte to UART0 transmit register
+ 297      =1  **
+ 298      =1  **    Side effects: waits until UART0 Tx is idle
+ 299      =1  **--------------------------------------------------------------------------*/
+ 300      =1  void
+ 301      =1  ZW_UART0_tx_send_byte(
+ 302      =1    BYTE bData);  /* IN a byte to written to the UART transmit register.*/
+ 303      =1  
+ 304      =1  /*===============================   ZW_UART0_rx_enable   ========================
+ 305      =1  **  Enable the UART receiver and reserve IO.
+ 306      =1  **
+ 307      =1  **    Side effects:
+ 308      =1  **--------------------------------------------------------------------------*/
+ 309      =1  void
+ 310      =1  ZW_UART0_rx_enable(
+ 311      =1    BYTE bState); /* IN  TRUE: enables UART0 rx function, FALSE: disables UART0 rx function */
+ 312      =1  
+ 313      =1  /*===============================   ZW_UART0_tx_enable   ========================
+ 314      =1  **  Enable the UART transmitter and reserve IO.
+ 315      =1  **
+ 316      =1  **    Side effects:
+ 317      =1  **--------------------------------------------------------------------------*/
+ 318      =1  void
+ 319      =1  ZW_UART0_tx_enable(
+ 320      =1    BYTE bState); /* IN  TRUE: enables UART0 tx function, FALSE: disables UART0 tx function */
+ 321      =1  
+ 322      =1  
+ 323      =1  /*===============================   ZW_UART0_tx_int_get   ========================
+ 324      =1  **  This function checks if the UART0 has sent a byte.
+ 325      =1  **
+ 326      =1  **    Side effects:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 29  
+
+ 327      =1  **--------------------------------------------------------------------------*/
+ 328      =1  
+ 329      =1  BYTE    /* RET zero (0x00): tx interrupt flag is not set,
+ 330      =1           *     non-zero:  : tx interrupt flag is set      */
+ 331      =1  ZW_UART0_tx_int_get(void);
+ 332      =1  
+ 333      =1  /*===============================   ZW_UART0_tx_active_get   ========================
+ 334      =1  **  This function checks if the UART0 is sending.
+ 335      =1  **
+ 336      =1  **    Side effects:
+ 337      =1  **--------------------------------------------------------------------------*/
+ 338      =1  
+ 339      =1  BYTE    /* RET zero (0x00): UART0 tx is idle,
+ 340      =1           *     non-zero:  : UART0 tx is active     */
+ 341      =1  ZW_UART0_tx_active_get(void);
+ 342      =1  
+ 343      =1  /*===============================   ZW_UART0_rx_int_get   ========================
+ 344      =1  **  This function checks if the UART0 has received a byte.
+ 345      =1  **
+ 346      =1  **    Side effects:
+ 347      =1  **--------------------------------------------------------------------------*/
+ 348      =1  BYTE    /* RET zero (0x00): rx interrupt flag is not set,
+ 349      =1           *     non-zero:  : rx interrupt flag is set      */
+ 350      =1  ZW_UART0_rx_int_get(void);
+ 351      =1  
+ 352      =1  
+ 353      =1  /*===========================  ZW_UART0_tx_send_dec  ==========================
+ 354      =1  **  Converts a byte to a two-digit decimal ASCII representation,
+ 355      =1  **  and transmits it over UART0.
+ 356      =1  **
+ 357      =1  **    Side effects:
+ 358      =1  **
+ 359      =1  **--------------------------------------------------------------------------*/
+ 360      =1  void            /*RET Nothing */
+ 361      =1  ZW_UART0_tx_send_dec(
+ 362      =1    BYTE bData);  /* IN data to send */
+ 363      =1  
+ 364      =1  /*===========================  ZW_UART0_tx_send_hex  ==========================
+ 365      =1  **  Converts a byte to a two-byte hexadecimal ASCII representation,
+ 366      =1  **  and transmits it over UART0.
+ 367      =1  **
+ 368      =1  **    Side effects:
+ 369      =1  **
+ 370      =1  **--------------------------------------------------------------------------*/
+ 371      =1  #define ZW_UART0_tx_send_num ZW_UART0_tx_send_hex
+ 372      =1  
+ 373      =1  void            /*RET Nothing */
+ 374      =1  ZW_UART0_tx_send_hex(
+ 375      =1    BYTE bData);   /* IN data to send */
+ 376      =1  
+ 377      =1  
+ 378      =1  /*===========================  ZW_UART0_tx_send_w_num  ==========================
+ 379      =1  **  Converts a WORD to a 4-byte hexadecimal ASCII representation,
+ 380      =1  **  and transmits it over UART0.
+ 381      =1  **
+ 382      =1  **    Side effects:
+ 383      =1  **
+ 384      =1  **--------------------------------------------------------------------------*/
+ 385      =1  void            /*RET Nothing */
+ 386      =1  ZW_UART0_tx_send_w_num(
+ 387      =1    WORD bData);   /* IN data to send */
+ 388      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 30  
+
+ 389      =1  /*============================   ZW_UART0_tx_send_str   ========================
+ 390      =1  **  Transmit a null terminated string over UART0.
+ 391      =1  **  The null data is not transmitted.
+ 392      =1  **
+ 393      =1  **    Side effects:
+ 394      =1  **
+ 395      =1  **--------------------------------------------------------------------------*/
+ 396      =1  void          /*RET Nothing */
+ 397      =1  ZW_UART0_tx_send_str(
+ 398      =1    BYTE_P str); /* IN String pointer */
+ 399      =1  
+ 400      =1  /*=============================   ZW_UART0_send_nl   =========================
+ 401      =1  **  Transmit CR + LF over UART0.
+ 402      =1  **
+ 403      =1  **    Side effects:
+ 404      =1  **
+ 405      =1  **--------------------------------------------------------------------------*/
+ 406      =1  void                /*RET Nothing */
+ 407      =1  ZW_UART0_tx_send_nl( void ); /*IN Nothing */
+ 408      =1  
+ 409      =1  
+ 410      =1  /*===============================   ZW_UART1_init   =============================
+ 411      =1  **  Initializes UART1.
+ 412      =1  **  Optionally enables transmit and/or receive, clears the rx and tx interrupt
+ 413      =1  **  flags, and sets the specified baudrate.
+ 414      =1  **
+ 415      =1  **  Side effects:
+ 416      =1  **--------------------------------------------------------------------------*/
+ 417      =1  void             /*RET Nothing */
+ 418      =1  ZW_UART1_init(
+ 419      =1    WORD bBaudRate,  /* IN  Baud rate / 100 (e.g. 96 => 9600baud/s, 1152 => 115200baud/s) */
+ 420      =1    BYTE bEnableTx,  /* IN  TRUE: Tx enabled, FALSE: Tx disabled */
+ 421      =1    BYTE bEnableRx); /* IN  TRUE: Rx enabled, FALSE: Rx disabled */
+ 422      =1  
+ 423      =1  /*==============================   ZW_UART1_INT_ENABLE  =============================
+ 424      =1  **  Enables UART0 interrupt
+ 425      =1  **
+ 426      =1  **    Side effects:
+ 427      =1  **--------------------------------------------------------------------------*/
+ 428      =1  
+ 429      =1  #define ZW_UART1_INT_ENABLE  ES1=1
+ 430      =1  
+ 431      =1  /*==============================   ZW_UART1_INT_DISABLE  =============================
+ 432      =1  **  Disables UART0 interrupt
+ 433      =1  **
+ 434      =1  **    Side effects:
+ 435      =1  **--------------------------------------------------------------------------*/
+ 436      =1  
+ 437      =1  #define ZW_UART1_INT_DISABLE ES1=0
+ 438      =1  
+ 439      =1  /*===============================   ZW_UART1_rx_int_clear   ========================
+ 440      =1  **  Clear the UART1 Rx interrupt flag
+ 441      =1  **
+ 442      =1  **    Side effects:
+ 443      =1  **--------------------------------------------------------------------------*/
+ 444      =1  void
+ 445      =1  ZW_UART1_rx_int_clear(void);
+ 446      =1  
+ 447      =1  /*=============================   ZW_UART1_tx_int_clear   ========================
+ 448      =1  **  Clear the UART1 Tx interrupt flag
+ 449      =1  **
+ 450      =1  **    Side effects:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 31  
+
+ 451      =1  **--------------------------------------------------------------------------*/
+ 452      =1  void
+ 453      =1  ZW_UART1_tx_int_clear(void);
+ 454      =1  
+ 455      =1  /*===============================   ZW_UART1_rx_data_wait_get   ========================
+ 456      =1  **  Read the content of the UART1 receive register
+ 457      =1  **
+ 458      =1  **    Side effects:
+ 459      =1  **--------------------------------------------------------------------------*/
+ 460      =1  BYTE    /* RET the content of the receive register*/
+ 461      =1  ZW_UART1_rx_data_wait_get(void);
+ 462      =1  
+ 463      =1  /*===============================   ZW_UART1_rx_data_get   ========================
+ 464      =1  **  Read the content of the UART1 receive register
+ 465      =1  **
+ 466      =1  **    Side effects:
+ 467      =1  **--------------------------------------------------------------------------*/
+ 468      =1  
+ 469      =1  BYTE    /* RET the content of the receive register*/
+ 470      =1  ZW_UART1_rx_data_get(void);
+ 471      =1  
+ 472      =1  /*===============================   ZW_UART1_tx_data_set   ========================
+ 473      =1  **  Write data byte to UART1 transmit register
+ 474      =1  **
+ 475      =1  **    Side effects:
+ 476      =1  **--------------------------------------------------------------------------*/
+ 477      =1  void
+ 478      =1  ZW_UART1_tx_data_set(
+ 479      =1    BYTE txByte);  /* IN a byte to written to the UART transmit register.*/
+ 480      =1  
+ 481      =1  /*===============================   ZW_UART1_tx_send_byte   ========================
+ 482      =1  **  Wait until UART1 Tx is idle, then write data byte to UART1 transmit register
+ 483      =1  **
+ 484      =1  **    Side effects: waits until UART1 Tx is idle
+ 485      =1  **--------------------------------------------------------------------------*/
+ 486      =1  void
+ 487      =1  ZW_UART1_tx_send_byte(
+ 488      =1    BYTE bData);  /* IN a byte to written to the UART transmit register.*/
+ 489      =1  
+ 490      =1  /*===============================   ZW_UART1_rx_enable   ========================
+ 491      =1  **  Enable the UART receiver and reserve IO.
+ 492      =1  **
+ 493      =1  **    Side effects:
+ 494      =1  **--------------------------------------------------------------------------*/
+ 495      =1  void
+ 496      =1  ZW_UART1_rx_enable(
+ 497      =1    BYTE bState); /* IN  TRUE: enables UART1 rx function, FALSE: disables UART1 rx function */
+ 498      =1  
+ 499      =1  /*===============================   ZW_UART1_tx_enable   ========================
+ 500      =1  **  Enable the UART transmitter and reserve IO.
+ 501      =1  **
+ 502      =1  **    Side effects:
+ 503      =1  **--------------------------------------------------------------------------*/
+ 504      =1  void
+ 505      =1  ZW_UART1_tx_enable(
+ 506      =1    BYTE bState); /* IN  TRUE: enables UART1 tx function, FALSE: disables UART1 tx function */
+ 507      =1  
+ 508      =1  
+ 509      =1  /*===============================   ZW_UART1_tx_int_get   ========================
+ 510      =1  **  This function checks if the UART1 has sent a byte.
+ 511      =1  **
+ 512      =1  **    Side effects:
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 32  
+
+ 513      =1  **--------------------------------------------------------------------------*/
+ 514      =1  
+ 515      =1  BYTE    /* RET zero (0x00): tx interrupt flag is not set,
+ 516      =1           *     non-zero:  : tx interrupt flag is set      */
+ 517      =1  ZW_UART1_tx_int_get(void);
+ 518      =1  
+ 519      =1  /*===============================   ZW_UART1_tx_active_get   ========================
+ 520      =1  **  This function checks if the UART1 is sending.
+ 521      =1  **
+ 522      =1  **    Side effects:
+ 523      =1  **--------------------------------------------------------------------------*/
+ 524      =1  
+ 525      =1  BYTE    /* RET zero (0x00): UART1 tx is idle,
+ 526      =1           *     non-zero:  : UART1 tx is active     */
+ 527      =1  ZW_UART1_tx_active_get(void);
+ 528      =1  
+ 529      =1  
+ 530      =1  /*===============================   ZW_UART1_rx_int_get   ========================
+ 531      =1  **  This function checks if the UART1 has received a byte.
+ 532      =1  **
+ 533      =1  **    Side effects:
+ 534      =1  **--------------------------------------------------------------------------*/
+ 535      =1  BYTE    /* RET zero (0x00): rx interrupt flag is not set,
+ 536      =1           *     non-zero:  : rx interrupt flag is set      */
+ 537      =1  ZW_UART1_rx_int_get(void);
+ 538      =1  
+ 539      =1  
+ 540      =1  /*===========================  ZW_UART1_tx_send_num  ==========================
+ 541      =1  **  Converts a byte to a two-byte hexadecimal ASCII representation,
+ 542      =1  **  and transmits it over UART1.
+ 543      =1  **
+ 544      =1  **
+ 545      =1  **    Side effects:
+ 546      =1  **
+ 547      =1  **--------------------------------------------------------------------------*/
+ 548      =1  #define ZW_UART1_tx_send_num ZW_UART1_tx_send_hex
+ 549      =1  
+ 550      =1  void            /*RET Nothing */
+ 551      =1  ZW_UART1_tx_send_hex(BYTE bData);   /* IN data to send */
+ 552      =1  
+ 553      =1  /*===========================  ZW_UART1_tx_send_num  ==========================
+ 554      =1  **  Converts a WORD to a 4-byte hexadecimal ASCII representation,
+ 555      =1  **  and transmits it over UART1.
+ 556      =1  **
+ 557      =1  **    Side effects:
+ 558      =1  **
+ 559      =1  **--------------------------------------------------------------------------*/
+ 560      =1  void            /*RET Nothing */
+ 561      =1  ZW_UART1_tx_send_w_num(
+ 562      =1    WORD bData);   /* IN data to send */
+ 563      =1  
+ 564      =1  /*============================   ZW_UART1_tx_send_str   ========================
+ 565      =1  **  Transmit a null terminated string over UART1.
+ 566      =1  **  The null data is not transmitted.
+ 567      =1  **
+ 568      =1  **    Side effects:
+ 569      =1  **
+ 570      =1  **--------------------------------------------------------------------------*/
+ 571      =1  void          /*RET Nothing */
+ 572      =1  ZW_UART1_tx_send_str(BYTE_P str); /* IN String pointer */
+ 573      =1  
+ 574      =1  /*=============================   ZW_UART1_send_nl   =========================
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 33  
+
+ 575      =1  **  Transmit CR + LF over UART1.
+ 576      =1  **
+ 577      =1  **    Side effects:
+ 578      =1  **
+ 579      =1  **--------------------------------------------------------------------------*/
+ 580      =1  void                /*RET Nothing */
+ 581      =1  ZW_UART1_tx_send_nl( void ); /*IN Nothing */
+ 582      =1  
+ 583      =1  
+ 584      =1  /*--------------------------------------------------------------------------
+ 585      =1  **--------------------------------------------------------------------------
+ 586      =1  **
+ 587      =1  **  WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING
+ 588      =1  
+ 589      =1  ** The following API calls are obsolete and should NOT be used.
+ 590      =1  ** The API calls will be removed in a later developers kit release.
+ 591      =1  **
+ 592      =1  **--------------------------------------------------------------------------
+ 593      =1  **--------------------------------------------------------------------------*/
+ 594      =1  
+ 595      =1  /*===============================   ZW_UART0_tx_dma_int_byte_count  ========================
+ 596      =1  **  Set interrupt tx byte count
+ 597      =1  **
+ 598      =1  **  Parameters
+ 599      =1  **
+ 600      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed to the UART
+ 601      =1  **                    Disabled when set to 0x00 which is default after reset
+ 602      =1  **   Side effects:
+ 603      =1  **--------------------------------------------------------------------------*/
+ 604      =1  void                    /*RET Nothing */
+ 605      =1  ZW_UART0_tx_dma_int_byte_count( BYTE bByteCount);   /*IN Number of tx'ed bytes */
+ 606      =1  
+ 607      =1  /*===============================   ZW_UART0_tx_dma_inter_byte_delay  ========================
+ 608      =1  **  Set Tx inter byte delay
+ 609      =1  **  Parameters
+ 610      =1  **
+ 611      =1  **   bDelay:   IN Sets the inter byte delay 0x00 no delay (default after reset)
+ 612      =1  **                                          0x01  125ns delay
+ 613      =1  **                                          0x02  250ns delay
+ 614      =1  **                                                 :
+ 615      =1  **                                          0x0F 1875ns delay
+ 616      =1  **   Side effects:
+ 617      =1  **--------------------------------------------------------------------------*/
+ 618      =1  void                    /*RET Nothing */
+ 619      =1  ZW_UART0_tx_dma_inter_byte_delay( BYTE bDelay);   /*IN inter byte delay */
+ 620      =1  
+ 621      =1  /*===============================   ZW_UART0_tx_dma_data  ========================
+ 622      =1  **  Set buffer address and length and then start UART0 DMA
+ 623      =1  **  Parameters
+ 624      =1  **
+ 625      =1  **   pbAddress:  IN pointer to Tx buffer in lower 4kB XRAM
+ 626      =1  **   bBufferLen: IN length of Tx buffer in bytes
+ 627      =1  **
+ 628      =1  **   Side effects:
+ 629      =1  **       Discards any ongoing UART TX DMA process
+ 630      =1  **--------------------------------------------------------------------------*/
+ 631      =1  void                    /*RET Nothing */
+ 632      =1  ZW_UART0_tx_dma_data( XBYTE *pbAddress,    /*IN buffer base address */
+ 633      =1                        BYTE bBufferLen); /*IN buffer len */
+ 634      =1  
+ 635      =1  /*===============================   ZW_UART0_tx_dma_status  ========================
+ 636      =1  **  If the UART0 DMA process is ongoing this function Returns the status of this ongoing
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 34  
+
+ 637      =1  **  process. Returns the status of the latest UART0 DMA process if the DMA has stopped.
+ 638      =1  **
+ 639      =1  **  Returned values:
+ 640      =1  **       UART_TX_DMA_STATUS_SLOW_XRAM: DMA can not keep up with configured inter byte
+ 641      =1  **                                     process because of congestion in XRAM access
+ 642      =1  **       UART_TX_DMA_STATUS_RUNNING:   The DMA is transferring data to UART0
+ 643      =1  **
+ 644      =1  **  Parameters: None
+ 645      =1  **
+ 646      =1  **   Side effects:
+ 647      =1  **--------------------------------------------------------------------------*/
+ 648      =1  BYTE                    /*RET status */
+ 649      =1  ZW_UART0_tx_dma_status(void); /*IN Nothing */
+ 650      =1  
+ 651      =1  /*===============================   ZW_UART0_tx_dma_bytes_transferred  ========================
+ 652      =1  **  Returns the number of bytes that has been transferred to UART0 from XRAM for the ongoing DMA
+ 653      =1  **  process. If no transfer is ongoing the number of bytes that has been transferred to UART0
+ 654      =1  **  from XRAM from the latest process is returned.
+ 655      =1  **
+ 656      =1  **  Parameters: None
+ 657      =1  **
+ 658      =1  **   Side effects:
+ 659      =1  **--------------------------------------------------------------------------*/
+ 660      =1  BYTE                    /*RET bytes transferred */
+ 661      =1  ZW_UART0_tx_dma_bytes_transferred(void); /*IN Nothing */
+ 662      =1  
+ 663      =1  /*===============================   ZW_UART0_tx_dma_cancel  ========================
+ 664      =1  **  Cancels any ongoing DMA process and brings UART TX DMA to idle state
+ 665      =1  **
+ 666      =1  **  Parameters: None
+ 667      =1  **
+ 668      =1  **   Side effects:
+ 669      =1  **--------------------------------------------------------------------------*/
+ 670      =1  void                    /*RET nothing */
+ 671      =1  ZW_UART0_tx_dma_cancel(void); /*IN Nothing */
+ 672      =1  
+ 673      =1  
+ 674      =1  
+ 675      =1  /*===============================   ZW_UART0_rx_dma_init  ===============================
+ 676      =1  **  Initialize the buffers and setup for the UART0 Rx DMA
+ 677      =1  **
+ 678      =1  **  Parameters
+ 679      =1  **     pbAddress:  IN pointer to the base address of the two Rx buffers
+ 680      =1  **     bBufLength: IN length of UART0 RX Buffer - must be greater than 0
+ 681      =1  **     bBitMask:   IN bit mask contains the setting of the Rx DMA
+ 682      =1  **                      UART_RX_DMA_LOD_INT_EN    Enable Loss Of Data interrupt
+ 683      =1  **                      UART_RX_DMA_SWITCH_COUNT  Switch buffer when byte count is reached
+ 684      =1  **                      UART_RX_DMA_SWITCH_FULL   Switch buffer when buffer full
+ 685      =1  **                      UART_RX_DMA_SWITCH_EOR    Switch buffer when EOR is received
+ 686      =1  **
+ 687      =1  **    Side effects:
+ 688      =1  **       Discards any ongoing UART RX DMA process
+ 689      =1  **       Clears status information
+ 690      =1  **-------------------------------------------------------------------------------------*/
+ 691      =1  void                    /*RET Nothing */
+ 692      =1  ZW_UART0_rx_dma_init( XBYTE *pbAddress,   /* IN pointer to base address of RX buffers */
+ 693      =1                        BYTE bBufLength, /* IN byte length of each of the two buffers*/
+ 694      =1                        BYTE bBitMask);  /* IN see above */
+ 695      =1  
+ 696      =1  /*===============================   ZW_UART0_rx_dma_int_byte_count  ===============================
+ 697      =1  **  Set interrupt rx byte count. A value of 0x00 means disabled
+ 698      =1  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 35  
+
+ 699      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed from the UART
+ 700      =1  **                  Disabled when set to 0x00
+ 701      =1  **    Side effects:
+ 702      =1  **-------------------------------------------------------------------------------------*/
+ 703      =1  void                    /*RET Nothing */
+ 704      =1  ZW_UART0_rx_dma_int_byte_count(BYTE bByteCount); /*IN */
+ 705      =1  
+ 706      =1  
+ 707      =1  /*===============================   ZW_UART0_rx_dma_status  ========================
+ 708      =1  **  If the UART0 RX DMA process is ongoing this function returns the status of this ongoing
+ 709      =1  **  process. Returns the status of the latest UART0 RX DMA process if the DMA has stopped.
+ 710      =1  **
+ 711      =1  **  Returned values:
+ 712      =1  **       UART_RX_DMA_STATUS_EOR:     The DMA switched RX buffer because it has
+ 713      =1  **                                   recieved an End of Record char
+ 714      =1  **       UART_RX_DMA_STATUS_LOD:     DMA can not keep up with the speed of the incomming data
+ 715      =1  **       UART_RX_DMA_STATUS_CURBUF1: Set when the UART0 RX DMA currently is transferring data
+ 716      =1  **                                   from buffer 1. When cleared the UART0 RX DMA currently is
+ 717      =1  **                                   transferring data from buffer 0
+ 718      =1  **       UART_RX_DMA_STATUS_BUFFULL: Set when a buffer has been filled to the limit
+ 719      =1  **       UART_RX_DMA_STATUS_RUNNING: The DMA is enabled
+ 720      =1  **
+ 721      =1  **  Parameters: None
+ 722      =1  **
+ 723      =1  **   Side effects:
+ 724      =1  **--------------------------------------------------------------------------*/
+ 725      =1  BYTE                    /*RET status */
+ 726      =1  ZW_UART0_rx_dma_status(void); /*IN Nothing */
+ 727      =1  
+ 728      =1  /*===============================   ZW_UART0_rx_dma_bytes_transferred  ========================
+ 729      =1  **  Returns the number of bytes that has been transferred to UART0 to XRAM for the ongoing DMA
+ 730      =1  **  process.
+ 731      =1  **
+ 732      =1  **  Parameters: None
+ 733      =1  **
+ 734      =1  **   Side effects:
+ 735      =1  **--------------------------------------------------------------------------*/
+ 736      =1  BYTE                    /*RET bytes transferred */
+ 737      =1  ZW_UART0_rx_dma_bytes_transferred(void); /*IN Nothing */
+ 738      =1  
+ 739      =1  /*===============================   ZW_UART0_rx_dma_cancel  ========================
+ 740      =1  **  Cancels any ongoing DMA process and brings UART RX DMA to idle state
+ 741      =1  **
+ 742      =1  **  Parameters: None
+ 743      =1  **
+ 744      =1  **   Side effects:
+ 745      =1  **--------------------------------------------------------------------------*/
+ 746      =1  void                    /*RET nothing */
+ 747      =1  ZW_UART0_rx_dma_cancel(void); /*IN Nothing */
+ 748      =1  
+ 749      =1  /*=============================   ZW_UART0_rx_dma_eor_set =======================
+ 750      =1  **
+ 751      =1  **  Sets the End of Record (EoR) character. The EoR function makes it possible
+ 752      =1  **  to switch receive buffer when a certain character is recieved, .e.g Linefeed.
+ 753      =1  **  UART_RX_DMA_SWITCH_EOR must have been set in the ZW_UART0_rx_dma_init call
+ 754      =1  **  for the function to be enabled.
+ 755      =1  **
+ 756      =1  **  Parameters:
+ 757      =1  **
+ 758      =1  **   Side effects:
+ 759      =1  **--------------------------------------------------------------------------*/
+ 760      =1  void                    /*RET nothing */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 36  
+
+ 761      =1  ZW_UART0_rx_dma_eor_set(BYTE bChar);  /*IN EoR character */
+ 762      =1  
+ 763      =1  /*=====================   ZW_UART0_rx_dma_byte_count_enable  =====================
+ 764      =1  **
+ 765      =1  **  Enables or disabled the function switch buffer when a certain byte count is
+ 766      =1  **  reached
+ 767      =1  **
+ 768      =1  **  Parameters: None
+ 769      =1  **
+ 770      =1  **   Side effects:
+ 771      =1  **--------------------------------------------------------------------------*/
+ 772      =1  void                    /*RET nothing */
+ 773      =1  ZW_UART0_rx_dma_byte_count_enable(BYTE bEnable); /* IN TRUE bute count switch is enabled */
+ 774      =1  
+ 775      =1  
+ 776      =1  
+ 777      =1  
+ 778      =1  
+ 779      =1  /*===============================   ZW_UART1_tx_dma_int_byte_count  ========================
+ 780      =1  **  Set interrupt tx byte count
+ 781      =1  **
+ 782      =1  **  Parameters
+ 783      =1  **
+ 784      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed to the UART
+ 785      =1  **                    Disabled when set to 0x00
+ 786      =1  **   Side effects:
+ 787      =1  **--------------------------------------------------------------------------*/
+ 788      =1  void                    /*RET Nothing */
+ 789      =1  ZW_UART1_tx_dma_int_byte_count( BYTE bByteCount);   /*IN Number of tx'ed bytes */
+ 790      =1  
+ 791      =1  /*===============================   ZW_UART1_tx_dma_inter_byte_delay  ========================
+ 792      =1  **  Set Tx inter byte delay
+ 793      =1  **  Parameters
+ 794      =1  **
+ 795      =1  **   bDelay:   IN Sets the inter byte delay 0x00 no delay (default after reset)
+ 796      =1  **                                          0x01  125ns delay
+ 797      =1  **                                          0x02  250ns delay
+ 798      =1  **                                                 :
+ 799      =1  **                                          0x0F 1875ns delay
+ 800      =1  **   Side effects:
+ 801      =1  **--------------------------------------------------------------------------*/
+ 802      =1  void                    /*RET Nothing */
+ 803      =1  ZW_UART1_tx_dma_inter_byte_delay( BYTE bDelay);   /*IN inter byte delay */
+ 804      =1  
+ 805      =1  /*===============================   ZW_UART1_tx_dma_data  ========================
+ 806      =1  **  Set buffer address and length and then start UART1 DMA
+ 807      =1  **  Parameters
+ 808      =1  **
+ 809      =1  **   pbAddress:  IN pointer to Tx buffer in lower 4kB XRAM
+ 810      =1  **   bBufferLen: IN length of Tx buffer in bytes
+ 811      =1  **
+ 812      =1  **   Side effects:
+ 813      =1  **       Discards any ongoing UART TX DMA process
+ 814      =1  **--------------------------------------------------------------------------*/
+ 815      =1  void                    /*RET Nothing */
+ 816      =1  ZW_UART1_tx_dma_data( XBYTE *pbAddress,    /*IN buffer base address */
+ 817      =1                        BYTE bBufferLen); /*IN buffer len */
+ 818      =1  
+ 819      =1  /*===============================   ZW_UART1_tx_dma_status  ========================
+ 820      =1  **  If the UART1 DMA process is ongoing this function Returns the status of this ongoing
+ 821      =1  **  process. Returns the status of the latest UART1 DMA process if the DMA has stopped.
+ 822      =1  **
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 37  
+
+ 823      =1  **  Returned values:
+ 824      =1  **       UART_TX_DMA_STATUS_SLOW_XRAM: DMA can not keep up with configured inter byte
+ 825      =1  **                                     process because of congestion in XRAM access
+ 826      =1  **       UART_TX_DMA_STATUS_RUNNING:   The DMA is transferring data to UART1
+ 827      =1  **
+ 828      =1  **  Parameters: None
+ 829      =1  **
+ 830      =1  **   Side effects:
+ 831      =1  **--------------------------------------------------------------------------*/
+ 832      =1  BYTE                    /*RET status */
+ 833      =1  ZW_UART1_tx_dma_status(void); /*IN Nothing */
+ 834      =1  
+ 835      =1  /*===============================   ZW_UART1_tx_dma_bytes_transferred  ========================
+ 836      =1  **  Returns the number of bytes that has been transferred to UART1 from XRAM for the ongoing DMA
+ 837      =1  **  process. If no transfer is ongoing the number of bytes that has been transferred to UART1
+ 838      =1  **  from XRAM from the latest process is returned.
+ 839      =1  **
+ 840      =1  **  Parameters: None
+ 841      =1  **
+ 842      =1  **   Side effects:
+ 843      =1  **--------------------------------------------------------------------------*/
+ 844      =1  BYTE                    /*RET bytes transferred */
+ 845      =1  ZW_UART1_tx_dma_bytes_transferred(void); /*IN Nothing */
+ 846      =1  
+ 847      =1  /*===============================   ZW_UART1_tx_dma_cancel  ========================
+ 848      =1  **  Cancels any ongoing DMA process and brings UART TX DMA to idle state
+ 849      =1  **
+ 850      =1  **  Parameters: None
+ 851      =1  **
+ 852      =1  **   Side effects:
+ 853      =1  **--------------------------------------------------------------------------*/
+ 854      =1  void                    /*RET nothing */
+ 855      =1  ZW_UART1_tx_dma_cancel(void); /*IN Nothing */
+ 856      =1  
+ 857      =1  /*===============================   ZW_UART1_rx_dma_init  ===============================
+ 858      =1  **  Initialize the buffers and setup for the UART1 Rx DMA
+ 859      =1  **
+ 860      =1  **  Parameters
+ 861      =1  **     pbAddress:  IN pointer to the base address of the two Rx buffers
+ 862      =1  **     bBufLength: IN length of UART1 RX Buffer - must be greater than 0
+ 863      =1  **     bBitMap:    IN bit mask contains the setting of the Rx DMA
+ 864      =1  **                      UART_RX_DMA_LOD_INT_EN    Enable Loss Of Data interrupt
+ 865      =1  **                      UART_RX_DMA_SWITCH_COUNT  Switch buffer when byte count is reached
+ 866      =1  **                      UART_RX_DMA_SWITCH_FULL   Switch buffer when buffer full
+ 867      =1  **
+ 868      =1  **    Side effects:
+ 869      =1  **       Discards any ongoing UART RX DMA process
+ 870      =1  **       Clears status information
+ 871      =1  **-------------------------------------------------------------------------------------*/
+ 872      =1  void                    /*RET Nothing */
+ 873      =1  ZW_UART1_rx_dma_init( XBYTE *pbAddress, /*IN pointer to base address of RX buffers */
+ 874      =1                        BYTE bBufLength, /* IN buffer byte length */
+ 875      =1                        BYTE bBitMap); /*IN the rx dmaBuf's threshold value of the almost full flag*/
+ 876      =1  
+ 877      =1  /*===============================   ZW_UART1_rx_dma_int_byte_count  ===============================
+ 878      =1  **  Set interrupt rx byte count. A value of 0x00 means disabled
+ 879      =1  **
+ 880      =1  **   bByteCount: IN Interrupt is issued when this number of bytes has been DMA'ed from the UART
+ 881      =1  **                  Disabled when set to 0x00
+ 882      =1  **    Side effects:
+ 883      =1  **-------------------------------------------------------------------------------------*/
+ 884      =1  void                    /*RET Nothing */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 38  
+
+ 885      =1  ZW_UART1_rx_dma_int_byte_count(BYTE bByteCount); /*IN */
+ 886      =1  
+ 887      =1  /*===============================   ZW_UART1_rx_dma_status  ========================
+ 888      =1  **  If the UART1 RX DMA process is ongoing this function returns the status of this ongoing
+ 889      =1  **  process. Returns the status of the latest UART1 RX DMA process if the DMA has stopped.
+ 890      =1  **
+ 891      =1  **  Returned values:
+ 892      =1  **       UART_RX_DMA_STATUS_EOR:     The DMA switched RX buffer because it has
+ 893      =1  **                                   recieved an End of Record char
+ 894      =1  **       UART_RX_DMA_STATUS_LOD:     DMA can not keep up with the speed of the incomming data
+ 895      =1  **       UART_RX_DMA_STATUS_CURBUF1: Set when the UART1 RX DMA currently is transferring data
+ 896      =1  **                                   from buffer 1. When cleared the UART1 RX DMA currently is
+ 897      =1  **                                   transferring data from buffer 0
+ 898      =1  **       UART_RX_DMA_STATUS_BUFFULL: Set when a buffer has been filled to the limit
+ 899      =1  **       UART_RX_DMA_STATUS_RUNNING: The DMA is enabled
+ 900      =1  **
+ 901      =1  **  Parameters: None
+ 902      =1  **
+ 903      =1  **   Side effects:
+ 904      =1  **--------------------------------------------------------------------------*/
+ 905      =1  BYTE                    /*RET status */
+ 906      =1  ZW_UART1_rx_dma_status(void); /*IN Nothing */
+ 907      =1  
+ 908      =1  /*===============================   ZW_UART1_rx_dma_bytes_transferred  ========================
+ 909      =1  **  Returns the number of bytes that has been transferred to UART1 to XRAM for the ongoing DMA
+ 910      =1  **  process.
+ 911      =1  **
+ 912      =1  **  Parameters: None
+ 913      =1  **
+ 914      =1  **   Side effects:
+ 915      =1  **--------------------------------------------------------------------------*/
+ 916      =1  BYTE                    /*RET bytes transferred */
+ 917      =1  ZW_UART1_rx_dma_bytes_transferred(void); /*IN Nothing */
+ 918      =1  
+ 919      =1  /*===============================   ZW_UART1_rx_dma_cancel  ========================
+ 920      =1  **  Cancels any ongoing DMA process and brings UART RX DMA to idle state
+ 921      =1  **
+ 922      =1  **  Parameters: None
+ 923      =1  **
+ 924      =1  **   Side effects:
+ 925      =1  **--------------------------------------------------------------------------*/
+ 926      =1  void                    /*RET nothing */
+ 927      =1  ZW_UART1_rx_dma_cancel(void); /*IN Nothing */
+ 928      =1  
+ 929      =1  
+ 930      =1  /*=============================   ZW_UART1_rx_dma_eor_set =======================
+ 931      =1  **
+ 932      =1  **  Sets the End of Record (EoR) character. The EoR function makes it possible
+ 933      =1  **  to switch receive buffer when a certain character is recieved, .e.g Linefeed.
+ 934      =1  **  UART_RX_DMA_SWITCH_EOR must have been set in the ZW_UART1_rx_dma_init call
+ 935      =1  **  for the function to be enabled.
+ 936      =1  **
+ 937      =1  **  Parameters:
+ 938      =1  **
+ 939      =1  **   Side effects:
+ 940      =1  **--------------------------------------------------------------------------*/
+ 941      =1  void                    /*RET nothing */
+ 942      =1  ZW_UART1_rx_dma_eor_set(BYTE bChar);  /*IN EoR character */
+ 943      =1  
+ 944      =1  /*=====================   ZW_UART1_rx_dma_byte_count_enable  =====================
+ 945      =1  **
+ 946      =1  **  Enables or disabled the function switch buffer when a certain byte count is
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 39  
+
+ 947      =1  **  reached
+ 948      =1  **
+ 949      =1  **  Parameters: None
+ 950      =1  **
+ 951      =1  **   Side effects:
+ 952      =1  **--------------------------------------------------------------------------*/
+ 953      =1  void                    /*RET nothing */
+ 954      =1  ZW_UART1_rx_dma_byte_count_enable(BYTE bEnable); /* IN TRUE bute count switch is enabled */
+ 955      =1  
+ 956      =1  
+ 957      =1  #endif /* _ZW_UART_API_H_ */
+ 105          #include <ZW_util_queue_api.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Queue utility for making ring buffers, task lists, etc.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef Z_WAVE_INCLUDE_ZW_UTIL_QUEUE_API_H_
+   8      =1  #define Z_WAVE_INCLUDE_ZW_UTIL_QUEUE_API_H_
+   9      =1  
+  10      =1  #include <ZW_stdint.h>
+   1      =2  /*
+   2      =2   * ZW_stdint.h
+   3      =2   *
+   4      =2   * Define integer types by their conventional POSIX names [1].
+   5      =2   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =2   *
+   7      =2   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =2   *
+   9      =2   *  Created on: 18/01/2013
+  10      =2   *      Author: jbu
+  11      =2   */
+  12      =2  #ifndef ZW_STDINT_H_
+  13      =2  #define ZW_STDINT_H_
+  14      =2  
+  15      =2  #ifdef __GNUC__
+  18      =2  
+  19      =2  #ifndef _STDINT_H // yield to "proper" stdint
+  20      =2  #define _STDINT_H
+  21      =2  
+  22      =2  typedef unsigned char uint8_t;
+  23      =2  typedef unsigned short uint16_t;
+  24      =2  
+  25      =2  /* These are needed to satisfy Yakindu*/
+  26      =2  #ifndef __GNUC__
+  27      =2  typedef signed short int_fast16_t;
+  28      =2  typedef unsigned short uint_fast16_t;
+  29      =2  #endif
+  30      =2  #ifdef __C51__
+  31      =2  typedef signed long int32_t;
+  32      =2  typedef unsigned long uint32_t;
+  33      =2  typedef int32_t  *intptr_t;
+  34      =2  #endif
+  35      =2  typedef unsigned char bool;
+  36      =2  //   typedef unsigned __int64  uintptr_t;
+  37      =2  //#else // _WIN64 ][
+  38      =2  //   typedef _W64 signed int   intptr_t;
+  39      =2  //   typedef _W64 unsigned int uintptr_t;
+  40      =2  #define true (1)
+  41      =2  #define false (0)
+  42      =2  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 40  
+
+  43      =2  #endif /*#ifndef _STDINT_H*/
+  44      =2  
+  45      =2  /* These are actually not POSIX, but from contiki */
+  46      =2  typedef uint8_t u8_t;
+  47      =2  typedef uint16_t u16_t;
+  48      =2  
+  49      =2  #endif /* ZW_STDINT_H_ */
+  11      =1  
+  12      =1  /****************************************************************************/
+  13      =1  /*                      DEFINITIONS                                         */
+  14      =1  /****************************************************************************/
+  15      =1  
+  16      =1  /**
+  17      =1   * Element type used in \ref QUEUE_T.
+  18      =1   */
+  19      =1  typedef uint8_t QElementType;
+  20      =1  
+  21      =1  /**
+  22      =1   * In order to use the Queue module, a variable of this type must be declared before calling
+  23      =1   * \ref ZW_util_queue_Init.
+  24      =1   */
+  25      =1  typedef struct
+  26      =1  {
+  27      =1    uint8_t out;
+  28      =1    uint8_t in;
+  29      =1    uint8_t count;
+  30      =1    uint8_t queueSize;
+  31      =1    uint8_t elementType;
+  32      =1    QElementType* array;
+  33      =1  }
+  34      =1  QUEUE_T;
+  35      =1  
+  36      =1  /**
+  37      =1   * @brief Initializes a given queue with a given buffer.
+  38      =1   * @param[in] pQueue Pointer to the queue to initialize.
+  39      =1   * @param[in] pBuffer Pointer to a buffer to initialize the queue with.
+  40      =1   * @param[in] sizeOfElements Size of elements in the given buffer.
+  41      =1   * @param[in] numberOfElements Number of elements in the given buffer.
+  42      =1   */
+  43      =1  void ZW_util_queue_Init(QUEUE_T * pQueue, void * pBuffer, BYTE sizeOfElements, BYTE numberOfElements);
+  44      =1  
+  45      =1  /**
+  46      =1   * @brief Enqueues a given element to a given queue.
+  47      =1   * @param[in] pQueue Pointer to a queue.
+  48      =1   * @param[in] pElement Pointer to an element.
+  49      =1   * @return TRUE if element was enqueued, FALSE otherwise.
+  50      =1   */
+  51      =1  BOOL ZW_util_queue_Enqueue(QUEUE_T * pQueue, void * pElement);
+  52      =1  
+  53      =1  /**
+  54      =1   * @brief Dequeues a given element from a given queue.
+  55      =1   * @param[in] pQueue Pointer to a queue.
+  56      =1   * @param[out] pElement Pointer to an element.
+  57      =1   * @return TRUE if element was dequeued, FALSE otherwise.
+  58      =1   */
+  59      =1  BOOL ZW_util_queue_Dequeue(QUEUE_T * pQueue, void * pElement);
+  60      =1  
+  61      =1  /**
+  62      =1   * @brief Get number of elements in queue.
+  63      =1   * @param[in] pQueue Pointer to a queue.
+  64      =1   * @return Number of queue elements.
+  65      =1   */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 41  
+
+  66      =1  uint8_t ZW_util_queue_GetItemCount(QUEUE_T * pQueue);
+  67      =1  
+  68      =1  #endif /* Z_WAVE_INCLUDE_ZW_UTIL_QUEUE_API_H_ */
+ 106          #include <ZW_mem_api.h>
+   1      =1  /*******************************  ZW_MEM_API.H  *******************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Z-Wave, the wireless lauguage.
+  11      =1   *
+  12      =1   *              Copyright (c) 2001
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Copy of data to/from non-volatile memory (EEPROM)
+  25      =1   *              Standard memory functions.
+  26      =1   *
+  27      =1   * Author:   Ivar Jeppesen
+  28      =1   *
+  29      =1   * Last Changed By:  $Author: efh $
+  30      =1   * Revision:         $Revision: 29682 $
+  31      =1   * Last Changed:     $Date: 2014-10-06 15:12:09 +0200 (ma, 06 okt 2014) $
+  32      =1   *
+  33      =1   ****************************************************************************/
+  34      =1  #ifndef _ZW_MEM_API_H_
+  35      =1  #define _ZW_MEM_API_H_
+  36      =1  
+  37      =1  /****************************************************************************/
+  38      =1  /*                              INCLUDE FILES                               */
+  39      =1  /****************************************************************************/
+  40      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 42  
+
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  41      =1  
+  42      =1  #ifdef NO_MEM_FUNCTIONS
+  45      =1  #define memcpy(dst, src, len)  __ZW_memcpy(len, dst, src)
+  46      =1  #define memcmp(dst, src, len)  __ZW_memcmp(len, dst, src)
+  47      =1  #define memset(dst, val, len)  __ZW_memset(val, len, dst)
+  48      =1  #endif
+  49      =1  #define ZW_memcpy(dst, src, len)  __ZW_memcpy(len, dst, src)
+  50      =1  #define ZW_memcmp(dst, src, len)  __ZW_memcmp(len, dst, src)
+  51      =1  #define ZW_memset(dst, val, len)  __ZW_memset(val, len, dst)
+  52      =1  
+  53      =1  /****************************************************************************/
+  54      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  55      =1  /****************************************************************************/
+  56      =1  /****************************  Memory  **************************************
+  57      =1  ** Copy of data to non-volatile memory (FLASH) only valid for slave and
+  58      =1  ** slave_routing libraries
+  59      =1  **
+  60      =1  **  Side effects: The non-volatile memory write operation is delayed via a timer.
+  61      =1  **                The physical write is delayed about 200 msec.
+  62      =1  **/
+  63      =1  
+  64      =1  /*============================   MemoryGetID   ===============================
+  65      =1  **  Copy the Home-ID and Node-ID to the specified RAM addresses
+  66      =1  **  BYTE *homeid pointer to RAM were the home ID should be placed
+  67      =1  **  BYTE *nodeid pointer to RAM were the Node ID should be placed.
+  68      =1  **--------------------------------------------------------------------------*/
+  69      =1  #define ZW_MEMORY_GET_ID(homeid,nodeid)   MemoryGetID(homeid,nodeid)
+  70      =1  
+  71      =1  /*============================   MemoryGetByte   ============================
+  72      =1  **    Read one byte from the EEPROM
+  73      =1  **
+  74      =1  ** BYTE               RET Data
+  75      =1  ** MemoryGetByte(
+  76      =1  ** WORD  offset );    IN   Application area offset
+  77      =1  **--------------------------------------------------------------------------*/
+  78      =1  #define ZW_MEM_GET_BYTE(offset) MemoryGetByte(offset)
+  79      =1  
+  80      =1  /*============================   MemoryPutByte   ============================
+  81      =1  **    Write one byte to the EEPROM
+  82      =1  **
+  83      =1  ** BYTE               RET False if write buffer full
+  84      =1  ** MemoryPutByte(
+  85      =1  ** WORD  offset,      IN   Application area offset
+  86      =1  ** BYTE  data );      IN   Data to store
+  87      =1  **--------------------------------------------------------------------------*/
+  88      =1  #define ZW_MEM_PUT_BYTE(offset,data) MemoryPutByte(offset,data)
+  89      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 43  
+
+  90      =1  /*============================   MemoryGetBuffer   =============================
+  91      =1  **    Read number of bytes from the EEPROM to a RAM buffer
+  92      =1  **
+  93      =1  ** void               RET Nothing
+  94      =1  ** MemoryGetBuffer(
+  95      =1  ** WORD  offset,      IN   Application area offset
+  96      =1  ** BYTE  *buffer,     IN   Buffer pointer
+  97      =1  ** WORD  length );    IN   Number of bytes to read
+  98      =1  **--------------------------------------------------------------------------*/
+  99      =1  #define ZW_MEM_GET_BUFFER(offset,buffer,length) MemoryGetBuffer(offset,buffer,length)
+ 100      =1  
+ 101      =1  /*============================   MemoryPutBuffer   =============================
+ 102      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 103      =1  **
+ 104      =1  **  Side effects: The EEPROM write operation has been done when function returns
+ 105      =1  **                and the callback is called max 10ms later via a timer
+ 106      =1  **
+ 107      =1  ** BYTE               RET FALSE if the buffer put queue is full
+ 108      =1  ** MemoryPutBuffer(
+ 109      =1  ** WORD  offset,          IN   Application area offset
+ 110      =1  ** BYTE  *buffer,         IN   Buffer pointer
+ 111      =1  ** WORD  length,          IN   Number of bytes to read
+ 112      =1  ** VOID_CALLBACKFUNC(func)( void) ); IN   Buffer write completed function pointer
+ 113      =1  **--------------------------------------------------------------------------*/
+ 114      =1  #define ZW_MEM_PUT_BUFFER(offset,buffer,length, func) MemoryPutBuffer(offset,buffer,length, func)
+ 115      =1  
+ 116      =1  
+ 117      =1  /*============================   ZW_MemoryPutBuffer   ========================
+ 118      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 119      =1  **
+ 120      =1  **  Side effects: The EEPROM write operation has been done when function returns
+ 121      =1  **                and the callback is called max 10ms later via a timer
+ 122      =1  **
+ 123      =1  ** BYTE               RET FALSE if the buffer put queue is full
+ 124      =1  ** ZW_MemoryPutBuffer(
+ 125      =1  ** WORD  offset,          IN   Application area offset
+ 126      =1  ** BYTE  length,          IN   Number of bytes to write
+ 127      =1  ** BYTE  *buffer,         IN   Buffer pointer
+ 128      =1  **--------------------------------------------------------------------------*/
+ 129      =1  #define ZW_MEM_PUT_BUFFER_NO_CB(offset,buffer,length) ZW_MemoryPutBuffer(offset,buffer,length)
+ 130      =1  
+ 131      =1  
+ 132      =1  /*===============================   ZW_EepromInit   ====================================
+ 133      =1  ** This function writes ZEROs in the entire EEPROM, then it write the homeID
+ 134      =1  ** if it different from ZERO. This function will only operate in the production mode.
+ 135      =1  **-----------------------------------------------------------------------------------*/
+ 136      =1  #define ZW_EEPROM_INIT(HOMEID)       ZW_EepromInit(HOMEID)
+ 137      =1  
+ 138      =1  /*============================   MemoryFlush   =============================
+ 139      =1  **    Write the content of the FLASH RAM buffer to the FLASH.
+ 140      =1  **
+ 141      =1  **  Side effects: During the write process the CPU wuill be in idle state.
+ 142      =1  **--------------------------------------------------------------------------*/
+ 143      =1  #define ZW_MEM_FLUSH()   ZW_MemoryFlush()
+ 144      =1  
+ 145      =1  
+ 146      =1  /****************************************************************************/
+ 147      =1  /*                              EXPORTED DATA                               */
+ 148      =1  /****************************************************************************/
+ 149      =1  
+ 150      =1  /****************************************************************************/
+ 151      =1  /*                           LOW LEVEL EXPORTED FUNCTIONS                   */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 44  
+
+ 152      =1  /****************************************************************************/
+ 153      =1  
+ 154      =1  
+ 155      =1  /****************************************************************************/
+ 156      =1  /*                           EXPORTED FUNCTIONS                             */
+ 157      =1  /****************************************************************************/
+ 158      =1  
+ 159      =1  /*============================   MemoryGetID   ===============================
+ 160      =1  **    Copy the Home-ID and Node-ID to the specified RAM addresses
+ 161      =1  **
+ 162      =1  **--------------------------------------------------------------------------*/
+ 163      =1  extern void               /*RET Nothing          */
+ 164      =1  MemoryGetID(
+ 165      =1    BYTE *homeID,           /*OUT  Home-ID pointer            */
+ 166      =1    BYTE *nodeID );         /*OUT  Node-ID pointer            */
+ 167      =1  
+ 168      =1  /*============================   MemoryGetByte   =============================
+ 169      =1  **  Read one byte from the EEPROM
+ 170      =1  **
+ 171      =1  **  Side effects:
+ 172      =1  **--------------------------------------------------------------------------*/
+ 173      =1  extern BYTE               /*RET Data          */
+ 174      =1  MemoryGetByte(
+ 175      =1    WORD  offset );         /*IN   Application area offset            */
+ 176      =1  
+ 177      =1  /*============================   MemoryPutByte   =============================
+ 178      =1  **  Add one byte to the EEPROM write queue
+ 179      =1  **
+ 180      =1  **  Side effects:
+ 181      =1  **
+ 182      =1  **--------------------------------------------------------------------------*/
+ 183      =1  extern BYTE               /*RET FALSE if write buffer full    */
+ 184      =1  MemoryPutByte(
+ 185      =1    WORD  offset,           /*IN   Application area offset   */
+ 186      =1    BYTE  bData );          /*IN   Data to store             */
+ 187      =1  
+ 188      =1  /*============================   MemoryGetBuffer   =============================
+ 189      =1  **    Read number of bytes from the EEPROM to a RAM buffer
+ 190      =1  **
+ 191      =1  **  Side effects:
+ 192      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 193      =1  **--------------------------------------------------------------------------*/
+ 194      =1  extern void               /*RET Nothing          */
+ 195      =1  MemoryGetBuffer(
+ 196      =1    WORD  offset,           /*IN   Application area offset   */
+ 197      =1    BYTE  *buffer,          /*IN   Buffer pointer            */
+ 198      =1    BYTE  length );         /*IN   Number of bytes to read  */
+ 199      =1  
+ 200      =1  /*============================   MemoryPutBuffer   =============================
+ 201      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 202      =1  **
+ 203      =1  **  Side effects: Write has been executed when function returns and callback
+ 204      =1  **                is called via a timer max 10ms later
+ 205      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 206      =1  **--------------------------------------------------------------------------*/
+ 207      =1  extern BYTE               /*RET FALSE if the buffer put queue is full          */
+ 208      =1  MemoryPutBuffer(
+ 209      =1    WORD  offset,           /*IN   Application area offset   */
+ 210      =1    BYTE  *buffer,          /*IN   Buffer pointer            */
+ 211      =1    WORD  length,           /*IN   Number of bytes to copy   */
+ 212      =1    VOID_CALLBACKFUNC(func)( void) );  /*IN   Buffer write completed function pointer */
+ 213      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 45  
+
+ 214      =1  
+ 215      =1  /*==========================   ZW_MemoryPutBuffer   ==========================
+ 216      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 217      =1  **
+ 218      =1  **  Side effects: Write has been executed when function returns
+ 219      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 220      =1  **--------------------------------------------------------------------------*/
+ 221      =1  extern BYTE               /*RET FALSE if the buffer put queue is full       */
+ 222      =1  ZW_MemoryPutBuffer(
+ 223      =1    WORD  offset,           /* IN Application area offset   */
+ 224      =1    BYTE  *buffer,          /* IN Buffer pointer            */
+ 225      =1    WORD  length);          /* IN Number of bytes to copy   */
+ 226      =1  
+ 227      =1  
+ 228      =1  /*===========================   MemoryGetStatus   ============================
+ 229      =1  **  Read status from the NVM
+ 230      =1  **
+ 231      =1  **  Side effects:
+ 232      =1  **--------------------------------------------------------------------------*/
+ 233      =1  extern BYTE               /*RET Data FALSE = 0 = OK, TRUE = 1 = read operation disturbed */
+ 234      =1  MemoryGetStatus(void);    /*IN  none          */
+ 235      =1  
+ 236      =1  /*==========================   MemoryClearStatus   ===========================
+ 237      =1  **  Clear status for the NVM
+ 238      =1  **
+ 239      =1  **  Side effects:
+ 240      =1  **--------------------------------------------------------------------------*/
+ 241      =1  extern void               /*RET none          */
+ 242      =1  MemoryClearStatus(void);  /*IN  none          */
+ 243      =1  
+ 244      =1  /*=============================   ZW_memcpy   ===============================
+ 245      =1  **    Copies length bytes from src to dst
+ 246      =1  **
+ 247      =1  **--------------------------------------------------------------------------*/
+ 248      =1  extern void       /* RET  Nothing */
+ 249      =1  __ZW_memcpy(
+ 250      =1    BYTE length,    /* IN   Number of bytes to copy */
+ 251      =1    BYTE *dst,      /* IN   Pointer to destination */
+ 252      =1    BYTE *src);     /* IN   Pointer to source */
+ 253      =1  
+ 254      =1  
+ 255      =1  /*=============================   ZW_memcmp   ===============================
+ 256      =1  **    Compares length bytes of src and dest
+ 257      =1  **
+ 258      =1  **--------------------------------------------------------------------------*/
+ 259      =1  extern BYTE       /* RET  0 if *src and *dst are equal, else 1 */
+ 260      =1  __ZW_memcmp(
+ 261      =1    BYTE length,    /* IN   Number of bytes to compare */
+ 262      =1    BYTE *dst,      /* IN   Pointer to buffer 1 */
+ 263      =1    BYTE *src);     /* IN   Pointer to buffer 2 */
+ 264      =1  
+ 265      =1  
+ 266      =1  /*===============================   ZW_memset   ==============================
+ 267      =1  **    Fill length bytes in dst with val
+ 268      =1  **
+ 269      =1  **--------------------------------------------------------------------------*/
+ 270      =1  void           /*RET Nothing */
+ 271      =1  __ZW_memset(
+ 272      =1    BYTE val,    /* IN Value to fill buffer with */
+ 273      =1    BYTE length, /* IN Number of bytes to set */
+ 274      =1    BYTE *dst);  /* IN Pointer to buffer to set/fill */
+ 275      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 46  
+
+ 276      =1  
+ 277      =1  #ifdef NVM_IS_EEPROM
+ 285      =1  
+ 286      =1  //#ifdef NVM_IS_FLASH
+ 287      =1  // NVM_IS_FLASH is defined in ZW_nvm_addr.h, which is not included by ZW_mem_api.h
+ 288      =1  // As ZW_nvm_addr.h is a basis-include, it cannot be used by an application.
+ 289      =1  #if defined(ZW_SLAVE_ROUTING) && !defined(ZW_SLAVE_32)
+ 298      =1  
+ 299      =1  #endif /* _ZW_MEM_API_H_ */
+ 107          #include <ZW_test_interface_driver.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Test Interface Driver.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef _ZW_TEST_INTERFACE_DRIVER_H_
+   8      =1  #define _ZW_TEST_INTERFACE_DRIVER_H_
+   9      =1  
+  10      =1  
+  11      =1  /****************************************************************************/
+  12      =1  /*                              INCLUDE FILES                               */
+  13      =1  /****************************************************************************/
+  14      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  15      =1  
+  16      =1  /*
+  17      =1   * DMA FUN
+  18      =1   */
+  19      =1  #define DMA_BUFFER_SIZE (64)
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 47  
+
+  20      =1  #define DMA_BUFFER_SIZE_SINGLE (DMA_BUFFER_SIZE / 2)
+  21      =1  /*
+  22      =1   * DMA FUN OVER
+  23      =1   */
+  24      =1  
+  25      =1  /****************************************************************************/
+  26      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  27      =1  /****************************************************************************/
+  28      =1  /* Break to debugger if assert fails */
+  29      =1  #ifdef ZW_TEST_INTERFACE_DRIVER
+  30      =1  #define ZDB_ASSERT(x, sigval) if(!(x)) zdb_handle_exception(sigval);
+  31      =1  #else
+  36      =1  
+  37      =1  /****************************************************************************/
+  38      =1  /*                              EXPORTED DATA                               */
+  39      =1  /****************************************************************************/
+  40      =1  
+  41      =1  /****************************************************************************/
+  42      =1  /*                           EXPORTED FUNCTIONS                             */
+  43      =1  /****************************************************************************/
+  44      =1  #ifdef ZW_TEST_INTERFACE_DRIVER
+  45      =1  void ZW_test_interface_driver_init(void);
+  46      =1  #endif
+  47      =1  
+  48      =1  /**
+  49      =1   * @brief Copies received data to a buffer referenced by a given pointer.
+  50      =1   * @param[in] pData Pointer to a buffer which can store the data.
+  51      =1   * @param[in] pLength Pointer to a variable which can store the length of the
+  52      =1   * received data.
+  53      =1   * @return TRUE if byte is read out, FALSE otherwise.
+  54      =1   */
+  55      =1  BOOL ZW_test_interface_driver_getData(BYTE * pData, BYTE * pLength);
+  56      =1  
+  57      =1  #endif /* _ZW_TEST_INTERFACE_DRIVER_H_ */
+ 108          #include <ZW_task.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Task pool handler.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef _ZW_TASK_H_
+   8      =1  #define _ZW_TASK_H_
+   9      =1  
+  10      =1  /****************************************************************************/
+  11      =1  /*                              INCLUDE FILES                               */
+  12      =1  /****************************************************************************/
+  13      =1  
+  14      =1  #include <ZW_stdint.h>
+   1      =2  /*
+   2      =2   * ZW_stdint.h
+   3      =2   *
+   4      =2   * Define integer types by their conventional POSIX names [1].
+   5      =2   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =2   *
+   7      =2   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =2   *
+   9      =2   *  Created on: 18/01/2013
+  10      =2   *      Author: jbu
+  11      =2   */
+  12      =2  #ifndef ZW_STDINT_H_
+  15      =1  
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 48  
+
+  16      =1  /****************************************************************************/
+  17      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  18      =1  /****************************************************************************/
+  19      =1  #ifndef TASK_POOL_SIZE
+  20      =1  #define TASK_POOL_SIZE 5
+  21      =1  #endif
+  22      =1  
+  23      =1  
+  24      =1  /****************************************************************************/
+  25      =1  /*                              EXPORTED DATA                               */
+  26      =1  /****************************************************************************/
+  27      =1  
+  28      =1  
+  29      =1  /****************************************************************************/
+  30      =1  /*                           EXPORTED FUNCTIONS                             */
+  31      =1  /****************************************************************************/
+  32      =1  
+  33      =1  
+  34      =1  /**
+  35      =1   * @brief Add task to task pool.
+  36      =1   * @param[in] CBPolltask function pointer to the task to poll.
+  37      =1   * @param[in] pTaskName pointer to a string descriping the Task name.
+  38      =1   * @return task handle ID or 0 if task-pool is full. Increase TASK_POOL_SIZE
+  39      =1   * if pool is full.
+  40      =1   */
+  41      =1  uint8_t TaskAdd(BOOL (CODE *CBPolltask)(void), const char * pTaskName);
+  42      =1  
+  43      =1  /**
+  44      =1   * @brief Pause the task.
+  45      =1   * @param[in] taskhandeId task handle ID
+  46      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  47      =1   */
+  48      =1  BOOL TaskPause(uint8_t taskhandeId);
+  49      =1  
+  50      =1  /**
+  51      =1   * @brief Run the paused task. If running do nothing.
+  52      =1   * @param[in] taskhandeId task handle ID
+  53      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  54      =1   */
+  55      =1  BOOL TaskRun(uint8_t taskhandeId);
+  56      =1  
+  57      =1  
+  58      =1  /**
+  59      =1   * @brief Remove the task from pool.
+  60      =1   * @param[in] taskhandeId task handle ID
+  61      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  62      =1   */
+  63      =1  BOOL TaskRemove(uint8_t taskhandeId);
+  64      =1  
+  65      =1  
+  66      =1  /**
+  67      =1   * @brief Interrupt process signal to the Task Handler to run all task in pool
+  68      =1   * to check for new jobs.
+  69      =1   */
+  70      =1  void TaskInterruptSignal(void);
+  71      =1  
+  72      =1  /**
+  73      =1   * @brief Task handler main poll queue.
+  74      =1   * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+  75      =1   * TRUE if one or more task has job.
+  76      =1   */
+  77      =1  BOOL TaskApplicationPoll(void);
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 49  
+
+  78      =1  
+  79      =1  
+  80      =1  /**
+  81      =1   * @brief TaskJobHasWork
+  82      =1   * Ask task handler if more task job to run. If not go to sleep.
+  83      =1   * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+  84      =1   * TRUE if one or more task has job.
+  85      =1   */
+  86      =1  BOOL TaskJobHasWork();
+  87      =1  
+  88      =1  
+  89      =1  #endif /* _ZW_TASK_H_ */
+  90      =1  
+  91      =1  
+ 109          
+ 110          
+ 111          #define USER_INTERRUPT 0
+ 112          #define BREAK_POINT 1
+ 113          #define BREAK_SINGLESTEP 2
+ 114          
+ 115          /************************************************************************
+ 116           *
+ 117           * external low-level support routines
+ 118           */
+ 119          
+ 120          #define ZDB_USE_UART0
+ 121          #ifdef ZDB_USE_UART0
+ 122          /* write a single character      */
+ 123          #define ZDB_SEND_BYTE ZW_UART0_tx_send_byte
+ 124          /* read and return a single char */
+ 125          #define ZDB_GET_BYTE ZW_UART0_rx_data_wait_get
+ 126          #define ZDB_UART_INIT ZW_UART0_init
+ 127          #define ZDB_UART_RI_BIT UARTSTAT_RI0_BIT
+ 128          #define ZDB_ES ES0
+ 129          #define ZDB_UART_rx_int_clear ZW_UART0_rx_int_clear
+ 130          #define ZDB_INUM_SERIAL INUM_SERIAL0
+ 131          
+ 132          // DMA fun
+ 133          #define ZDB_UART_DMA_INIT ZW_UART0_rx_dma_init
+ 134          #define ZDB_UART_DMA_EOR_SET ZW_UART0_rx_dma_eor_set
+ 135          #define ZDB_UART_DMA_INT_BYTE_COUNT ZW_UART0_rx_dma_int_byte_count
+ 136          
+ 137          
+ 138          #else /*ZDB_USE_UART0*/
+ 148          
+ 149          /************************************************************************/
+ 150          /* BUFMAX defines the maximum number of characters in inbound/outbound buffers*/
+ 151          #define BUFMAX (32+1)
+ 152          
+ 153          /*
+ 154           * DMA FUN
+ 155           */
+ 156          #define DMA_EOR_CHARACTER ('\r')
+ 157          #ifdef __C51__
+ 158          XBYTE dmaBuffer[DMA_BUFFER_SIZE] _at_ 0x072D;
+ 159          #else
+ 162          static BYTE dmaBufferOffset = DMA_BUFFER_SIZE_SINGLE; // Offset => Buffer 2
+ 163          static BOOL dmaDataIsReady = FALSE;
+ 164          /*
+ 165           * DMA FUN OVER
+ 166           */
+ 167          
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 50  
+
+ 168          /***************************  ASSEMBLY CODE MACROS *************************/
+ 169          /*                     */
+ 170          #ifdef __C51__
+ 171          //#pragma NOAREGS /* Functions sometimes called from interrupt using other register bank */
+ 172          #endif
+ 173          /* Convert ch from a hex digit to an int */
+ 174          
+ 175          /*
+ 176           * The following queue and buffer is declared with the purpose of having a
+ 177           * terminal where a user can input commands handled in the application layer.
+ 178           */
+ 179          static QUEUE_T debugQueue;
+ 180          #define DEBUG_QUEUE_BUFFER_SIZE (20)
+ 181          static BYTE debugBuffer[DEBUG_QUEUE_BUFFER_SIZE];
+ 182          
+ 183          void ZW_test_interface_driver_init(void)
+ 184          {
+ 185   1        ZDB_UART_INIT(1152, TRUE, TRUE);
+ 186   1      
+ 187   1        // Init queue used for debug commands.
+ 188   1        ZW_util_queue_Init(&debugQueue, debugBuffer, sizeof(debugBuffer[0]), DEBUG_QUEUE_BUFFER_SIZE);
+ 189   1      
+ 190   1        ZDB_ES = 1;  /* Enable "serial" interrupt */
+ 191   1      
+ 192   1        // DMA INTERRUPT ON EOR
+ 193   1        ZDB_UART_DMA_INT_BYTE_COUNT(0);
+ 194   1        ZDB_UART_DMA_INIT(dmaBuffer, DMA_BUFFER_SIZE_SINGLE, (UART_RX_DMA_SWITCH_EOR | UART_RX_DMA_SWITCH_FULL))
+             -;
+ 195   1        ZDB_UART_DMA_EOR_SET(DMA_EOR_CHARACTER);
+ 196   1      }
+ 197          
+ 198          
+ 199          /* UART interrupt handler */
+ 200          #ifdef __C51__
+ 201          static void ZDB_UART_RX_TX_interrupt(void) interrupt ZDB_INUM_SERIAL
+ 202          {
+ 203   1        _push_(SFRPAGE);
+ 204   1        if (ZW_UART0_rx_int_get() != 0x00)
+ 205   1        {
+ 206   2          dmaBufferOffset = (ZW_UART0_rx_dma_status() & 0x02) ? 0 : DMA_BUFFER_SIZE_SINGLE;
+ 207   2          dmaDataIsReady = TRUE;
+ 208   2          TaskInterruptSignal();
+ 209   2          ZW_UART0_rx_int_clear();
+ 210   2        }
+ 211   1        _pop_(SFRPAGE);
+ 212   1      }
+ 213          #endif
+ 214          
+ 215          
+ 216          BOOL ZW_test_interface_driver_getData(BYTE * pData, BYTE * pLength)
+ 217          {
+ 218   1        BOOL fStatus = FALSE;
+ 219   1        ZDB_ES = 0; // Disable interrupt
+ 220   1        if (TRUE == dmaDataIsReady)
+ 221   1        {
+ 222   2          BYTE byteCount;
+ 223   2          for (byteCount = 0; byteCount < DMA_BUFFER_SIZE_SINGLE; byteCount++)
+ 224   2          {
+ 225   3            if (DMA_EOR_CHARACTER == dmaBuffer[dmaBufferOffset + byteCount])
+ 226   3            {
+ 227   4              *pLength = byteCount + 1;
+ 228   4              break;
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 51  
+
+ 229   4            }
+ 230   3          }
+ 231   2      
+ 232   2          dmaDataIsReady = FALSE;
+ 233   2          memcpy(pData, &dmaBuffer[dmaBufferOffset], *pLength);
+ 234   2          fStatus = TRUE;
+ 235   2        }
+ 236   1        ZDB_ES = 1; // Enable interrupt
+ 237   1        return fStatus;
+ 238   1      }
+ 239          
+ 240          #endif  /* ZW_TEST_INTERFACE_DRIVER */
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 52  
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION ZW_test_interface_driver_init (BEGIN)
+                                           ; SOURCE LINE # 183
+                                           ; SOURCE LINE # 184
+                                           ; SOURCE LINE # 185
+                       MOV     R3,#01H
+                       MOV     R5,#01H
+                       MOV     R7,#080H
+                       MOV     R6,#04H
+                 E     CALL    _ZW_UART0_init
+                                           ; SOURCE LINE # 188
+                       MOV     R3,#01H
+                 R     MOV     R2,#HIGH debugBuffer
+                 R     MOV     R1,#LOW debugBuffer
+                 E     MOV     DPTR,#?_ZW_util_queue_Init?BYTE+03H
+                 E     CALL    ?C?PSTXDATA
+                 E     MOV     DPTR,#?_ZW_util_queue_Init?BYTE+06H
+                       MOV     A,#01H
+                       MOVX    @DPTR,A
+                       INC     DPTR
+                       MOV     A,#014H
+                       MOVX    @DPTR,A
+                 R     MOV     R2,#HIGH debugQueue
+                 R     MOV     R1,#LOW debugQueue
+                 E     CALL    _ZW_util_queue_Init
+                                           ; SOURCE LINE # 190
+                       SETB    ES0
+                                           ; SOURCE LINE # 193
+                       CLR     A
+                       MOV     R7,A
+                 E     CALL    _ZW_UART0_rx_dma_int_byte_count
+                                           ; SOURCE LINE # 194
+                       MOV     R6,#HIGH dmaBuffer
+                       MOV     R7,#LOW dmaBuffer
+                       MOV     R3,#05H
+                       MOV     R5,#020H
+                 E     CALL    _ZW_UART0_rx_dma_init
+                                           ; SOURCE LINE # 195
+                       MOV     R7,#0DH
+                 E     JMP     _ZW_UART0_rx_dma_eor_set
+             ; FUNCTION ZW_test_interface_driver_init (END)
+
+             ; FUNCTION ZDB_UART_RX_TX_interrupt (BEGIN)
+                       PUSH    ACC
+                       PUSH    B
+                       PUSH    DPH
+                       PUSH    DPL
+                       PUSH    PSW
+                       MOV     PSW,#00H
+                       PUSH    AR0
+                       PUSH    AR1
+                       PUSH    AR2
+                       PUSH    AR3
+                       PUSH    AR4
+                       PUSH    AR5
+                       PUSH    AR6
+                       PUSH    AR7
+                                           ; SOURCE LINE # 201
+                                           ; SOURCE LINE # 203
+                       PUSH    SFRPAGE
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 53  
+
+                                           ; SOURCE LINE # 204
+                 E     CALL    ZW_UART0_rx_int_get
+                       MOV     A,R7
+                 R     xJZ     ?C0002
+                                           ; SOURCE LINE # 205
+                                           ; SOURCE LINE # 206
+                 E     CALL    ZW_UART0_rx_dma_status
+                       MOV     A,R7
+                       MOV     R7,#020H
+                 R     xJNB    ACC.1,?C0003
+                       MOV     R7,#00H
+             ?C0003:
+             ?C0004:
+                 R     MOV     DPTR,#dmaBufferOffset
+                       MOV     A,R7
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 207
+                 R     SETB    dmaDataIsReady
+                                           ; SOURCE LINE # 208
+                 E     CALL    TaskInterruptSignal
+                                           ; SOURCE LINE # 209
+                 E     CALL    ZW_UART0_rx_int_clear
+                                           ; SOURCE LINE # 210
+             ?C0002:
+                                           ; SOURCE LINE # 211
+                       POP     SFRPAGE
+                                           ; SOURCE LINE # 212
+                       POP     AR7
+                       POP     AR6
+                       POP     AR5
+                       POP     AR4
+                       POP     AR3
+                       POP     AR2
+                       POP     AR1
+                       POP     AR0
+                       POP     PSW
+                       POP     DPL
+                       POP     DPH
+                       POP     B
+                       POP     ACC
+                       RETI    
+             ; FUNCTION ZDB_UART_RX_TX_interrupt (END)
+
+             ; FUNCTION _ZW_test_interface_driver_getData (BEGIN)
+                                           ; SOURCE LINE # 216
+                 R     MOV     DPTR,#pData
+                 E     CALL    ?C?PSTXDATA
+                                           ; SOURCE LINE # 217
+                                           ; SOURCE LINE # 218
+                 R     CLR     fStatus
+                                           ; SOURCE LINE # 219
+                       CLR     ES0
+                                           ; SOURCE LINE # 220
+                 R     xJNB    dmaDataIsReady,?C0006
+                                           ; SOURCE LINE # 221
+                                           ; SOURCE LINE # 223
+                       CLR     A
+                 R     MOV     DPTR,#byteCount
+                       MOVX    @DPTR,A
+             ?C0007:
+                 R     MOV     DPTR,#byteCount
+                       MOVX    A,@DPTR
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 54  
+
+                       MOV     R7,A
+                       CLR     C
+                       SUBB    A,#020H
+                 R     xJGE    ?C0008
+                                           ; SOURCE LINE # 224
+                                           ; SOURCE LINE # 225
+                 R     MOV     DPTR,#dmaBufferOffset
+                       MOVX    A,@DPTR
+                       ADD     A,R7
+                       ADD     A,#LOW dmaBuffer
+                       MOV     DPL,A
+                       CLR     A
+                       ADDC    A,#HIGH dmaBuffer
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                 R     xJNE    A,#0DH,?C0009
+                                           ; SOURCE LINE # 226
+                                           ; SOURCE LINE # 227
+                 R     MOV     DPTR,#byteCount
+                       MOVX    A,@DPTR
+                       INC     A
+                       MOV     R7,A
+                 R     MOV     DPTR,#pLength
+                 E     CALL    ?C?PLDXDATA
+                       MOV     A,R7
+                 E     CALL    ?C?CSTPTR
+                                           ; SOURCE LINE # 228
+                 R     xJMP    ?C0008
+                                           ; SOURCE LINE # 229
+                                           ; SOURCE LINE # 230
+             ?C0009:
+                 R     MOV     DPTR,#byteCount
+                       MOVX    A,@DPTR
+                       INC     A
+                       MOVX    @DPTR,A
+                 R     xJMP    ?C0007
+             ?C0008:
+                                           ; SOURCE LINE # 232
+                 R     CLR     dmaDataIsReady
+                                           ; SOURCE LINE # 233
+                 R     MOV     DPTR,#pLength
+                 E     CALL    ?C?PLDXDATA
+                 E     CALL    ?C?CLDPTR
+                       MOV     R7,A
+                 R     MOV     DPTR,#dmaBufferOffset
+                       MOVX    A,@DPTR
+                       ADD     A,#LOW dmaBuffer
+                       MOV     R1,A
+                       CLR     A
+                       ADDC    A,#HIGH dmaBuffer
+                       MOV     R2,A
+                       MOV     R3,#01H
+                 E     MOV     DPTR,#?___ZW_memcpy?BYTE+04H
+                 E     CALL    ?C?PSTXDATA
+                 R     MOV     DPTR,#pData
+                 E     CALL    ?C?PLDXDATA
+                 E     CALL    ___ZW_memcpy
+                                           ; SOURCE LINE # 234
+                 R     SETB    fStatus
+                                           ; SOURCE LINE # 235
+             ?C0006:
+                                           ; SOURCE LINE # 236
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 55  
+
+                       SETB    ES0
+                                           ; SOURCE LINE # 237
+                 R     MOV     C,fStatus
+                                           ; SOURCE LINE # 238
+             ?C0011:
+                       RET     
+             ; FUNCTION _ZW_test_interface_driver_getData (END)
+
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 56  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+uint16_t . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+sSomeXDATA4K . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  1
+  anything . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+P0 . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0080H  1
+P1 . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0090H  1
+u8_t . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+DWORD. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+P2 . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00A0H  1
+P3 . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00B0H  1
+AC . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D6H  1
+EA . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00AFH  1
+int32_t. . . . . . . . . . . . . . . .  TYPEDEF  -----  LONG     -----  4
+SFRPAGE. . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00FFH  1
+EADC . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00EAH  1
+IE . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00A8H  1
+uint_fast16_t. . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+dmaBuffer. . . . . . . . . . . . . . .  PUBLIC   XDATA  ARRAY    072DH  64
+FL . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D1H  1
+debugQueue . . . . . . . . . . . . . .  STATIC   XDATA  STRUCT   0000H  8
+P0b0 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0080H  1
+P1b0 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0090H  1
+P0b1 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0081H  1
+P2b0 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A0H  1
+P1b1 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0091H  1
+P0b2 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0082H  1
+P3b0 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B0H  1
+P2b1 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A1H  1
+P1b2 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0092H  1
+P0b3 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0083H  1
+_ZW_UART0_init . . . . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+P3b1 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B1H  1
+P2b2 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A2H  1
+P1b3 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0093H  1
+P0b4 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0084H  1
+P2b3 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A3H  1
+P1b4 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0094H  1
+P0b5 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0085H  1
+PADC . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00FAH  1
+P2b4 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A4H  1
+P1b5 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0095H  1
+P0b6 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0086H  1
+IP . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00B8H  1
+int_fast16_t . . . . . . . . . . . . .  TYPEDEF  -----  INT      -----  2
+P3b4 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B4H  1
+P2b5 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A5H  1
+P1b6 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0096H  1
+P0b7 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0087H  1
+ZW_UART0_rx_int_get. . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+P3b5 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B5H  1
+P2b6 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A6H  1
+P1b7 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0097H  1
+CY . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D7H  1
+P3b6 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B6H  1
+P2b7 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A7H  1
+P3b7 . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B7H  1
+IE_1 . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00E8H  1
+SP . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0081H  1
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 57  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+XDATA4K_P. . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+OV . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D2H  1
+bool . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+EUSB . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00EDH  1
+u16_t. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+_ZW_UART0_rx_dma_int_byte_count. . . .  EXTERN   CODE   PROC     -----  -----
+EGPT . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00E9H  1
+PCON . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0087H  1
+DWORD_P. . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+BYTE . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+ETRI . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00E8H  1
+TMOD . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0089H  1
+TCON . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0088H  1
+_ZW_UART0_rx_dma_eor_set . . . . . . .  EXTERN   CODE   PROC     -----  -----
+QUEUE_T. . . . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  8
+  out. . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  in . . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  count. . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  queueSize. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+  elementType. . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0004H  1
+  array. . . . . . . . . . . . . . . .  MEMBER   -----  PTR      0005H  3
+PUSB . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00FDH  1
+PGPT . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00F9H  1
+WORD . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+IE0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0089H  1
+IE1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      008BH  1
+PTRI . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00F8H  1
+B. . . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00F0H  1
+QElementType . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+ACC. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00E0H  1
+ES0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00ACH  1
+ES1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00ECH  1
+ET0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A9H  1
+ET1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00ABH  1
+TF0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      008DH  1
+IP1. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00F8H  1
+TF1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      008FH  1
+TaskInterruptSignal. . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+TH0. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   008CH  1
+EX0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00A8H  1
+IT0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      0088H  1
+TH1. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   008DH  1
+EX1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00AAH  1
+IT1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      008AH  1
+uint8_t. . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+P. . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D0H  1
+TL0. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   008AH  1
+TL1. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   008BH  1
+_ZW_util_queue_Init. . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+PS0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00BCH  1
+PS1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00FCH  1
+PT0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B9H  1
+RS0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D3H  1
+PT1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00BBH  1
+RS1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D4H  1
+TR0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      008CH  1
+TR1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      008EH  1
+C51 COMPILER V9.54   ZW_TEST_INTERFACE_DRIVER                                              11/21/2021 08:17:26 PAGE 58  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+PX0. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00B8H  1
+PX1. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00BAH  1
+DPH. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0083H  1
+___ZW_memcpy . . . . . . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+EIR. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00EEH  1
+P0DIR. . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00FDH  1
+DPL. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   0082H  1
+P1DIR. . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00C9H  1
+ESPI0. . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00EFH  1
+P2DIR. . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00CAH  1
+ZW_UART0_rx_int_clear. . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+P3DIR. . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00CBH  1
+BYTE_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+dmaDataIsReady . . . . . . . . . . . .  STATIC   DATA   BIT      0000H  1
+debugBuffer. . . . . . . . . . . . . .  STATIC   XDATA  ARRAY    0008H  20
+ZW_UART0_rx_dma_status . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+ZDB_UART_RX_TX_interrupt . . . . . . .  STATIC   CODE   PROC     0000H  -----
+PIR. . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00FEH  1
+WORD_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+PSPI0. . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00FFH  1
+ZW_test_interface_driver_init. . . . .  PUBLIC   CODE   PROC     0000H  -----
+F0 . . . . . . . . . . . . . . . . . .  ABSBIT   -----  BIT      00D5H  1
+_ZW_UART0_rx_dma_init. . . . . . . . .  EXTERN   CODE   PROC     -----  -----
+intptr_t . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+PSW. . . . . . . . . . . . . . . . . .  SFR      DATA   U_CHAR   00D0H  1
+_ZW_test_interface_driver_getData. . .  PUBLIC   CODE   PROC     0000H  -----
+  pData. . . . . . . . . . . . . . . .  AUTO     XDATA  PTR      0000H  3
+  pLength. . . . . . . . . . . . . . .  AUTO     XDATA  PTR      0003H  3
+  byteCount. . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0006H  1
+  fStatus. . . . . . . . . . . . . . .  AUTO     DATA   BIT      0000H  1
+uint32_t . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+dmaBufferOffset. . . . . . . . . . . .  STATIC   XDATA  U_CHAR   001CH  1
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    294    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     29       7
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       1
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

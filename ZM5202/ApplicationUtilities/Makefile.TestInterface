@@ -1,0 +1,78 @@
+#****************************************************************************
+#
+#  Copyright (c) 2001-2014
+#  Sigma Designs, Inc.
+#  All Rights Reserved
+#
+#----------------------------------------------------------------------------
+#
+# Description:
+#    Makefile for the ZW0x0x development kit
+#    This makefile defines the endpoint support for the targets built,
+#    and it MUST be included by the application's main Makefile 2 times.
+#    1. time before inclusion of Makefile.common, and
+#    2. time after inclusion of Makefile.common.
+#
+# Author:   Erik Friis Harck
+#
+# Last Changed By:  $Author:  $
+# Revision:         $Revision:  $
+# Last Changed:     $Date:  $
+#
+#***************************************************************************/
+
+ifeq ($(COMMON_INCLUDED),)
+
+# Additional test interface software modules to include.
+ifeq ($(TEST_INTERFACE),YES)
+
+# An addition to the target file name, when secure.
+TI_FILE=_TI
+
+# Add ZW_util_queue.obj if not in the list RELFILES
+ifneq (ZW_util_queue.obj,$(filter ZW_util_queue.obj,$(RELFILES)))
+
+RELFILES+=\
+ ZW_util_queue.obj
+endif
+
+RELFILES+=\
+ ZW_test_interface.obj
+
+# Needs to be in Common
+COMMON_RELFILES+=\
+ ZW_test_interface_driver.obj
+
+endif
+
+else
+
+#---------------------------------------------------------------------------------------------------------
+# ADDITION TO THE VARIANTS TO BUILD
+#---------------------------------------------------------------------------------------------------------
+# Add a dimension "TEST_INTERFACE to list of all VariantNames.
+#
+# TEST_INTERFACE variant must be added in front of LIST_OF_VARIANTS to be handled last,
+# and for the filtering below in this Makefile to work. (LIST_OF_VARIANTS+= TEST_INTERFACE # does not work correctly)
+LIST_OF_VARIANTS:=TEST_INTERFACE $(LIST_OF_VARIANTS)
+# A full list of values for each VariantName MUST be assigned.
+LIST_OF_TEST_INTERFACE:=YES NO
+# A default value for each VariantName MUST be assigned. They are used in the help texts.
+TEST_INTERFACE_DEFAULT:=NO
+# An option variable for each VariantName MUST be assigned to be considered during "make",
+# and of course, the application source code must be prepared to distinguish between variants.
+TEST_INTERFACE_OPTION:=TEST_INTERFACE=$(TEST_INTERFACE)
+#---------------------------------------------------------------------------------------------------------
+
+# Additional CDEFINES for building with security
+ifeq ($(TEST_INTERFACE),YES)
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ TEST_INTERFACE_SUPPORT,\
+ ZW_TEST_INTERFACE_DRIVER
+endif
+
+endif # ifeq ($(COMMON_INCLUDED),)
+

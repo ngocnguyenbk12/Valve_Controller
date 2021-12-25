@@ -1,0 +1,71 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: µVision V5.31.0.0
+Copyright (C) 2020 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: nguyen SF314-56, nguyen corp, LIC=IKAY6-DEHUI-FBUBI-6VB1I-SR479-UPXGN
+ 
+Tool Versions:
+Toolchain:       PK51 Prof. Developers Kit for SiLabs  Version: 9.54
+Toolchain Path:  C:\Keil_v5\C51\BIN
+C Compiler:      C51.exe V9.54
+Assembler:       AX51.exe V3.13.0.0
+Linker/Locator:  LX51.exe V4.66.41.0
+Library Manager: LIBX51.exe V4.30.1.0
+Hex Converter:   OHX51.exe V1.45.0.0
+CPU DLL:         (null)
+Dialog DLL:      (null) 
+<h2>Project:</h2>
+E:\SDK\ProductPlus\SerialAPIPlus\serialapi_slave_enhanced_232_OTW_ZW050x_US.uvproj
+Project File Date:  12/14/2021
+
+<h2>Output:</h2>
+Build target 'serialapi_slave_enhanced_232_OTW_ZW050x_US'
+User command #1: C:/SDK/Tools/Make/make  --no-print-directory -- SENSOR_TYPE=NON_BATT RF=US COUNTRY=US LIB=slave_enhanced_232 BOOTLOADER_ENABLED=1  BOOT=BOOTLOADER_ENABLED HOST_INTERFACE=UART BOARD=ZM5202 CHIP=ZW050x FREQUENCY=US UVISIONPREBUILD=1 WATCHDOG=WATCHDOG_DISABLE LIBRARY=slave_enhanced_232 BUILDDIR=build_prj ZW0x0x
+make[1]: Nothing to be done for `prerequisites'.
+make-supported-functions-include.bat E:\\SDK\\Z-Wave\\lib\\slave_enhanced_232_ZW050x\\ZW_slave_enhanced_232_ZW050x.lib E:\\SDK\\ProductPlus\\SerialAPIPlus\\build_prj\\slave_enhanced_232_supported_func.h
+Generating SerialAPI defines for supported functions based on what exists in
+  E:\SDK\Z-Wave\lib\slave_enhanced_232_ZW050x\ZW_slave_enhanced_232_ZW050x.lib ...
+compiling App_RFSetup.c...
+compiling ZW_firmware_bank1_mark.c...
+compiling serialappl.c...
+compiling conhandle.c...
+compiling led_control.c...
+compiling ZW_nvr_app_api.c...
+compiling eeprom.c...
+compiling nvmHost.c...
+compiling ZW_cmd_class_list.c...
+compiling ZW_TransportSecProtocol.c...
+compiling ZW_nvm_descriptor.c...
+compiling ZW_firmware_bank2_mark.c...
+compiling ZW_firmware_bank3_mark.c...
+assembling ZW_L51_BANK.a51...
+assembling ZW_app_version.a51...
+compiling ZW_firmware_descriptor_addr.c...
+compiling ZW_firmware_descriptor.c...
+linking...
+Program Size: data=247.7 xdata=20097 const=731 code=94125
+User command #1: C:/SDK/Tools/Make/make  --no-print-directory -- SENSOR_TYPE=NON_BATT RF=US COUNTRY=US LIB=slave_enhanced_232 BOOTLOADER_ENABLED=1  BOOT=BOOTLOADER_ENABLED HOST_INTERFACE=UART BOARD=ZM5202 CHIP=ZW050x FREQUENCY=US UVISIONPOSTBUILD=1 WATCHDOG=WATCHDOG_DISABLE LIBRARY=slave_enhanced_232 BUILDDIR=build_prj ZW0x0x
+make[1]: Nothing to be done for `prerequisites'.
+make[1]: Nothing to be done for `depend'.
+Extended 8051/251 Object to Hex File Converter V1.45.0.0
+COPYRIGHT KEIL ELEKTRONIK GmbH 2000 - 2015
+GENERATING INTEL H386 FILE: .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.ota
+Fixbootcrc - Application start address 0x1800 (0)
+applicationFirmwareDescriptorOffset 0x7FB8
+0x66CF CRC - Bank1  - Start 0x08000, Length 0x7EEA
+0x004C CRC - Bank2  - Start 0x10000, Length 0x2B1A
+0x3544 CRC - Bank3  - Start 0x18000, Length 0x6F84
+0xB1C7 CRC - Common - Start 0x01800, Length 0x67C4
+ApplicationCommonLength 0x7FC6
+C:\\SDK\\Tools\\HexTools\\srec_cat.exe .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.ota -intel -exclude 0x0 0x1800 -offset -0x1800 -o .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.ota.bin -binary
+E:\SDK\Z-Wave\lib\otacompress\otacompress.exe .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.ota.bin .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.ota.bin.lz1
+C:\\SDK\\Tools\\HexTools\\srec_cat.exe  .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.ota.bin.lz1 -binary -o .\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x\serialapi_slave_enhanced_232_OTW_ZW050x_US.otz -intel -line-length=43
+Generating serialapi_slave_enhanced_232 list.
+".\build_prj\serialapi_slave_enhanced_232_OTW_ZW050x_Rels\serialapi_slave_enhanced_232_OTW_ZW050x_US.aof" - 0 Error(s), 0 Warning(s).
+Build Time Elapsed:  00:00:37
+</pre>
+</body>
+</html>

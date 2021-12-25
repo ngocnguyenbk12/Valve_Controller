@@ -1,0 +1,9 @@
+ifeq ($(MAKELEVEL),0)
+default: sticky
+sticky: clearerror
+	$(MAKE) $(MAKEOPTS) .  BOOT=BOOTLOADER_ENABLED  TEST_INTERFACE=YES  LIBRARY=slave_enhanced_232  FREQUENCY=US  CODE_MEMORY_MODE=banking  SENSOR_TYPE=NON_BATT  CHIP=ZW050x  WATCHDOG=WATCHDOG_DISABLED
+else
+default: ZW0x0x
+endif
+#
+STICKY_TARGET:=yes

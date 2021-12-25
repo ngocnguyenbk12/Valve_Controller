@@ -1,0 +1,99 @@
+#****************************************************************************
+#
+#  Copyright (c) 2001-2014
+#  Sigma Designs, Inc.
+#  All Rights Reserved
+#
+#----------------------------------------------------------------------------
+#
+# Description:
+#    Makefile for the ZW0x0x development kit
+#    This makefile defines the different variants of HOST_INTERFACE
+#    targets to be built for the SerialAPI application.
+#
+# Author:   Erik Friis Harck
+#
+# Last Changed By:  $Author: efh $
+# Revision:         $Revision: 26404 $
+# Last Changed:     $Date: 2013-07-15 15:22:05 +0200 (ma, 15 jul 2013) $
+#
+#***************************************************************************/
+
+ifeq ($(COMMON_INCLUDED),)
+
+# Fill-in here what needs to be set before going into the recursion engine in Makefile.common (and Makefile.variants)
+
+ifneq ($(HOST_INTERFACE),)
+ifneq ($(HOST_INTERFACE),UART)
+IFNAME:=_$(HOST_INTERFACE)
+endif
+endif
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+
+# Only force USB modules into COMMON if target is a USB target (none UART)
+ifneq ($(HOST_INTERFACE),UART)
+COMMON_ZWLIB_MODULES_APPLICATION_SPECIFIC:=\
+ ZW_USB_TASK,\
+ ZW_PHY_USB_050X
+endif
+
+# Only force USB modules into BANK3 if target is a USB target (none UART)
+ifneq ($(HOST_INTERFACE),UART)
+BANK3_ZWLIB_MODULES_APPLICATION_SPECIFIC:=\
+ ZW_PHY_USB_050X_INIT,\
+ ZW_USB_MAN,\
+ ZW_USB
+endif
+
+endif # ifeq ($(CODE_MEMORY_MODE),banking)
+
+else
+
+# Fill-in here what needs to be set after calling the recursion engine in Makefile.common (and Makefile.variants)
+
+#---------------------------------------------------------------------------------------------------------
+# ADDITION TO THE VARIANTS TO BUILD
+#---------------------------------------------------------------------------------------------------------
+# Add a dimension "HOST_INTERFACE" to the build array
+#
+# HOST_INTERFACE variant must be added in front of LIST_OF_VARIANTS to be handled last,
+# and for the filtering below in this Makefile to work. (LIST_OF_VARIANTS+= HOST_INTERFACE # does not work correctly)
+LIST_OF_VARIANTS:=HOST_INTERFACE $(LIST_OF_VARIANTS)
+# A full list of values for each VariantName must be assigned.
+LIST_OF_HOST_INTERFACE:=UART USBVCP
+# A default value for each VariantName must be assigned. They are used in the help texts.
+HOST_INTERFACE_DEFAULT:=UART
+# An option variable for each VariantName must be assigned to be considered during "make",
+# and of course, the application source code must be prepared to distinguish between variants.
+HOST_INTERFACE_OPTION:=HOST_INTERFACE=$(HOST_INTERFACE)
+#---------------------------------------------------------------------------------------------------------
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+
+## List ZW_library modules, forced into COMMON bank
+## Only force USB modules into COMMON if target is a USB target (none UART)
+#ifneq ($(HOST_INTERFACE),UART)
+#COMMON_ZWLIB_MODULES:=\
+# ZW_USB_TASK,\
+# ZW_PHY_USB_050X
+#endif
+## Only force USB modules into BANK1 if target is a USB target (none UART)
+#ifneq ($(HOST_INTERFACE),UART)
+#BANK1_ZWLIB_MODULES+=,\
+# ZW_PHY_USB_050X_INIT,\
+# ZW_USB_MAN,\
+# ZW_USB
+#endif # ifneq ($(HOST_INTERFACE),UART)
+
+endif # ifeq ($(CODE_MEMORY_MODE),banking)
+
+ifeq ($(HOST_INTERFACE),USBVCP)
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ $(HOST_INTERFACE)
+endif
+
+endif # ifeq ($(COMMON_INCLUDED),)

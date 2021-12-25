@@ -1,0 +1,38 @@
+#***************************************************************************
+#
+# Copyright (c) 2001-2012
+# Sigma Designs, Inc.
+# All Rights Reserved
+#
+#---------------------------------------------------------------------------
+#
+#  Description: Common makefile for battery binsensor of all types
+#
+#  Author:   Erik Friis Harck
+#
+#  Last Changed By:  $Author: efh $
+#  Revision:         $Revision: 13932 $
+#  Last Changed:     $Date: 2009-08-04 16:27:15 +0200 (Mon, 25 May 2009) $
+#
+#****************************************************************************
+
+#------------------------------------
+# Build "Understand C++" database
+#------------------------------------
+
+# Make a file listing the C source files for the target
+$(TARGET)-filelist.txt: $(CSRCFILENAMEFILES)
+	@findstr /E /I /C:".c" $(subst \,\\,$(RELSDIRFULL)\*.csrc) | $(SED) -r "s/^.*://g" - > $(subst \,\\,$(RELSDIRFULL)\$(TARGET)-filelist.txt)
+
+$(TARGET).udc: $(TARGET)-filelist.txt
+	@echo Making Understand C++ database $@
+	@echo $(C51INC),%CD%| $(SED) "s/,/\n/g" - > $(subst \,\\,$(RELSDIRFULL)\$(TARGET)-includepathlist.txt)
+	@echo __C51__, $(CDEFINES)| $(SED) "s/ *, */\n/g" - > $(subst \,\\,$(RELSDIRFULL)\$(TARGET)-cdefineslist.txt)
+	undc -create -db $(subst \,\\,$(RELSDIRFULL)\$@) -add @$(subst \,\\,$(RELSDIRFULL)\$(TARGET)-filelist.txt) -addfoundincludes -addfoundsysincludes -define @$(subst \,\\,$(RELSDIRFULL)\$(TARGET)-cdefineslist.txt) -include @$(subst \,\\,$(RELSDIRFULL)\$(TARGET)-includepathlist.txt) -compiler "Keil c51" -rebuild
+
+# "understand" database creation is optional.
+# use "make UNDERSTAND_C=1 ZWxxxxx...."
+ifeq ($(UNDERSTAND_C),1)
+all: $(TARGET).udc
+endif
+

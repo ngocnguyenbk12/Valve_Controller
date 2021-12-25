@@ -1,0 +1,58 @@
+#*************  Makefile.common_ZW0x0x_supported_functions  ****************
+#            #######
+#            ##  ##
+#            #  ##    ####   #####    #####  ##  ##   #####
+#              ##    ##  ##  ##  ##  ##      ##  ##  ##
+#             ##  #  ######  ##  ##   ####   ##  ##   ####
+#            ##  ##  ##      ##  ##      ##   #####      ##
+#           #######   ####   ##  ##  #####       ##  #####
+#                                            #####
+#           Z-Wave, the wireless language.
+#
+#               Copyright (c) 2001
+#               Zensys A/S
+#               Denmark
+#
+#               All Rights Reserved
+#
+#     This source file is subject to the terms and conditions of the
+#     Zensys Software License Agreement which restricts the manner
+#     in which it may be used.
+#
+#---------------------------------------------------------------------------
+#
+#  Description: Make SupportedFunction txt files for SerialAPI targets
+#
+#  Author:   Erik Friis Harck
+#
+#  Last Changed By:  $Author: efh $
+#  Revision:         $Revision: 13932 $
+#  Last Changed:     $Date: 2009-08-04 16:27:15 +0200 (Mon, 25 May 2009) $
+#
+#****************************************************************************
+
+# If doing Bootloader skip this...
+ifeq ($(BOOTLOADER),)
+
+TARGETTYPE:=serialapi_$(LIB)
+
+ifneq ($(PATCH),)
+LISTFILENAME:=serialappl_patch.lst
+else
+LISTFILENAME:=serialappl.lst
+endif
+
+#-------------------------------------------------------
+# Make SupportedFunction txt files for SerialAPI targets
+#-------------------------------------------------------
+
+$(subst \,\\,$(TARGETBASEDIR)\SupportedFunc_$(TARGETTYPE).txt): $(subst \,\\,$(LISTDIR)\$(LISTFILENAME))
+	@echo $(TARGET): > $@
+	@echo Generating $(TARGETTYPE) list.
+	@cmd /V:ON /C "supported.bat $(subst \,\\,$(LISTDIR)\$(LISTFILENAME))" >> $@
+
+ifneq ($(CODE_MEMORY_MODE),starter_devmode)
+all: $(subst \,\\,$(TARGETBASEDIR)\SupportedFunc_$(TARGETTYPE).txt)
+endif
+
+endif

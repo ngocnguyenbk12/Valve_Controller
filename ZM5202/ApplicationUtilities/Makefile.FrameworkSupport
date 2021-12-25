@@ -1,0 +1,39 @@
+#****************************************************************************
+#
+#  Copyright (c) 2001-2014
+#  Sigma Designs, Inc.
+#  All Rights Reserved
+#
+#----------------------------------------------------------------------------
+#
+# Description:
+#    Makefile for the ZW0x0x development kit
+#    This makefile defines the Framework support for the targets built,
+#    and it MUST be included by the application's main Makefile 2 times.
+#    1. time before inclusion of Makefile.common, and
+#    2. time after inclusion of Makefile.common.
+#
+# Author:   Erik Friis Harck
+#
+# Last Changed By:  $Author:  $
+# Revision:         $Revision:  $
+# Last Changed:     $Date:  $
+#
+#***************************************************************************/
+
+ifeq ($(COMMON_INCLUDED),)
+
+RELFILES+=\
+ ZW_tx_mutex.obj\
+ ZW_TransportMulticast.obj\
+ ZW_TransportEndpoint.obj\
+ ZW_TransportSecProtocol.obj\
+ ZW_cmd_class_list.obj\
+ endpoint_lookup.obj\
+ CommandClassMultiChan.obj\
+ CommandClassMultiChanAssociation.obj\
+ CommandClassSupervision.obj
+ 
+
+endif # ifeq ($(COMMON_INCLUDED),)
+

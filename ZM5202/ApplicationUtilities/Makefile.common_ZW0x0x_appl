@@ -1,0 +1,506 @@
+#****************************************************************************
+#
+#  Copyright (c) 2001-2014
+#  Sigma Designs, Inc.
+#  All Rights Reserved
+#
+#---------------------------------------------------------------------------
+#
+#  Description: Common make file for all ZW0x0x Z-Wave applications
+#               This make file conatins all the rules that create the build directory.
+#               And compile the c files or aseemble the .a51 files.
+#               It also conatins the compiler and assempler options.
+#  Author:   Samer Seoud
+#
+#  Last Changed By:  $Author: tro $
+#  Revision:         $Revision: 31885 $
+#  Last Changed:     $Date: 2015-09-21 13:16:55 +0200 (ma, 21 sep 2015) $
+#
+#****************************************************************************
+
+##########################
+# Keil Program names     #
+##########################
+ifneq ($(KEIL_LOCAL_PATH),)
+KEILPATH=$(KEIL_LOCAL_PATH)
+endif
+
+ifeq ($(SW_PGM),)
+SW_PGM=$(sw_pgm)
+endif
+ifeq ($(TOOLSDIR),)
+TOOLSDIR=$(toolsdir)
+endif
+ifeq ($(KEILPATH),)
+KEILPATH=$(keilpath)
+endif
+ifeq ($(TOOLDIR),)
+TOOLDIR=$(tooldir)
+endif
+
+CC=$(subst \,\\,$(KEILPATH)\bin\C51)
+LN=$(subst \,\\,$(KEILPATH)\bin\LX51)
+HEX=$(subst \,\\,$(KEILPATH)\bin\OHX51)
+LIBX=$(subst \,\\,$(KEILPATH)\bin\LIBX51)
+ASM=$(subst \,\\,$(KEILPATH)\bin\AX51)
+
+# Utility location
+ifeq ($(ZWUTILDIR),)
+ZWUTILDIR:=..\ApplicationUtilities
+endif
+
+# Command handlers location
+ifeq ($(ZW_CMDHANDLER_DIR),)
+ZW_CMDHANDLER_DIR:=..\ApplicationCommandHandlers
+endif
+
+# Z-Wave+ lib location
+ifeq ($(ZW_APP_LIB_DIR),)
+ZW_APP_LIB_DIR:=..\..\zlib
+endif
+
+# Build location: The default build location is set to "build"
+# You have the opportunity to set the build location otherwise by setting BUILDDIR=<something else>
+# e.g. uVision build are done in "BUILDDIR=build_prj"
+ifeq ($(BUILDDIR),)
+BUILDDIR:=build
+endif
+
+# The command to make dependencies from the headerfiles
+# included by a file.
+INCDEP=python15 $(subst \,\\,$(TOOLSDIR)\IncDep\incdep.py)
+
+###############
+# Directories #
+###############
+# Find the current directory used as a base for all other paths.
+BASEDIR:=.
+BASEDIRFULL:=$(shell cd)
+
+TARGETBASEDIR:=$(BASEDIR)\$(BUILDDIR)
+TARGETBASEDIRFULL:=$(BASEDIRFULL)\$(BUILDDIR)
+
+TARGETDIRFULL:=$(TARGETBASEDIRFULL)\$(TARGETDIR)
+TARGETDIR:=$(TARGETBASEDIR)\$(TARGETDIR)
+
+RELSDIR:=$(TARGETDIR)_Rels
+RELSDIRFULL:=$(TARGETDIRFULL)_Rels
+
+LISTDIR:=$(TARGETDIR)_list
+LISTDIRFULL:=$(TARGETDIRFULL)_list
+
+# Export the variables declared above to the other makefiles.
+export BASEDIR INCDEP
+
+ifneq ($(C51INC),)
+C51INC+=,
+endif
+C51INC+=$(ZWLIBROOT)\include,$(ZWLIBROOT)\IO_defines,$(TARGETBASEDIR),$(RELSDIR),$(KEILPATH)\inc,$(ZWUTILDIR),$(ZW_CMDHANDLER_DIR),$(ZW_APP_LIB_DIR)\cmdclass,$(ZW_APP_LIB_DIR)\devtypes,$(ZW_APP_LIB_DIR)\handler
+C51LIB=$(KEILPATH)\\lib
+ifneq ($(A51INC),)
+A51INC+=;
+endif
+A51INC+=$(KEILPATH)\inc;$(ZWLIBROOT)\include;$(TARGETDIR)\Rels;$(ZWUTILDIR)
+
+ifneq ($(BOOTLOADER_ENABLED),)
+TARGETHEXFILE:=$(TARGET).ota
+TARGETCOMPRESSEDHEXFILE:=$(TARGET).otz
+TARGETHEXFILEWITHBOOTLOADER:=$(TARGET)_WITH_BOOTLOADER.hex
+else
+TARGETHEXFILE:=$(TARGET).hex
+endif # ifneq ($(BOOTLOADER_ENABLED),)
+
+ifneq ($(UVISIONPREBUILD),) # If part of uVision build, do not build all. uVision has it's own way of doing this.
+all:
+	@echo > NUL:
+else
+ifneq ($(BOOTLOADER_ENABLED),)
+all: $(TARGETCOMPRESSEDHEXFILE) $(TARGETHEXFILEWITHBOOTLOADER)
+else
+all: $(TARGETHEXFILE)
+endif # ifneq ($(BOOTLOADER_ENABLED),)
+endif # ifneq ($(UVISIONPREBUILD),)
+
+
+
+ifneq ($(LIB),)
+ZW_LIBRARY:=$(LIB)
+else
+ZW_LIBRARY:=nolib
+endif
+
+######################
+# (flags and defines #
+######################
+
+## Check if the target mode us used then inserted in the defines strings.
+ifneq ($(TARGET_MODE),)
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ $(TARGET_MODE)
+ifneq ($(ADEFINES),)
+ADEFINES+=,
+endif
+ADEFINES+=\
+ $(TARGET_MODE)
+endif
+
+ifneq ($(BOOTLOADER_ENABLED),)
+ifeq ($(findstring BOOTLOADER_ENABLED, $(CDEFINES)),)
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ BOOTLOADER_ENABLED
+ifneq ($(ADEFINES),)
+ADEFINES+=,
+endif
+ADEFINES+=\
+ BOOTLOADER_ENABLED
+endif
+endif
+
+## Check if we are using extended CX51 compiler if so then we need to define __C51__
+ifeq ($(findstring "CX51","$(CC)"),"CX51")
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ __C51__
+endif
+
+## Add library to CDEFINE and ADEFINE
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ $(ZW_LIBRARY)
+
+#----- Chip memory layout -----
+#
+INT_VEC:=0
+
+#----- Chip memory layout specifications for the ZW050x -----
+ifeq ($(CHIP),ZW050x)
+
+#----- slave_routing needs more NONZERO resources
+XDATA_NONZERO_VARS_ZW_BEGIN=0X1200
+ifeq ($(LIBRARY), slave_routing)
+XDATA_NONZERO_VARS_ZW_END=0X1272
+XDATA_NONZERO_VARS_APP_BEGIN=0X1273
+else
+XDATA_NONZERO_VARS_ZW_END=0X1254
+XDATA_NONZERO_VARS_APP_BEGIN=0X1255
+endif
+XDATA_NONZERO_VARS_APP_END=0X127F
+
+
+ifneq ($(BOOTLOADER),)
+INT_VEC:=0x0000
+
+# Memory classes specification for LFLAGS building bootloader application code:
+CODEBEGIN=0X0000
+CODEEND=0X17FF
+
+BITDATAAREA=I:0X0020.0-I:0X002F.7
+DATAAREA=D:0X0000-D:0X001F,D:0X0030-D:0X007F
+IDATAAREA=I:0X0030-I:0X00FF
+XDATAAREA=X:0X0000-X:0X0FFF,X:0X2000-X:0X4FFF
+CODEAREA=C:$(CODEBEGIN)-C:$(CODEEND)
+
+
+CLASSSPEC:=CLASSES(BIT($(BITDATAAREA)),\
+                   DATA($(DATAAREA)),\
+                   IDATA($(IDATAAREA)),\
+                   XDATA($(XDATAAREA)),\
+                   XDATA_NON_ZERO_VARS_ZW (X:$(XDATA_NONZERO_VARS_ZW_BEGIN)-X:$(XDATA_NONZERO_VARS_ZW_END)),\
+                   XDATA_NON_ZERO_VARS_APP (X:$(XDATA_NONZERO_VARS_APP_BEGIN)-X:$(XDATA_NONZERO_VARS_APP_END)),\
+                   CODE($(CODEAREA)),\
+                   CONST($(CODEAREA)))
+
+else #/* ifneq ($(BOOTLOADER),) */
+
+RESSTR:=RESERVE (C:0x8000-C:0xCFFF, C:0xD07B - 0xFFFF)
+
+INT_VEC:=0x1800
+FIRMEWAREDESCRIPTORADDR=0x1808
+
+ifneq ($(BOOTLOADER_ENABLED),)
+CODEBEGIN=$(INT_VEC)
+
+else  #/* ifneq ($(BOOTLOADER_ENABLED),) */
+
+ifeq ($(ZW_LIBRARY),nolib)
+INT_VEC:=0x0000
+endif
+
+# nonbanking target
+CODEBEGIN=0X0000
+
+endif #/* ifneq ($(BOOTLOADER_ENABLED),) */
+
+## reserve 4 bytes to the crc32 used
+CODEEND=0XFFFB
+
+BITDATAAREA=I:0X0020.0-I:0X002F.7
+DATAAREA=D:0X0000-D:0X001F,D:0X0030-D:0X007F
+IDATAAREA=I:0X0080-I:0X00FF
+XDATAAREA=X:0X2000-X:0X4FFF
+XDATAUPPERAREA=X:0X2000-X:0X4FFF
+XDATALOWERAREA=X:0X0000-X:0X0FFF
+ifeq ($(ZW_LIBRARY),slave_routing)
+HDATALIBAREA=X:0X010000-X:0X0100FE
+HDATAAREA=X:0X010000-X:0X0100FE
+else
+HDATALIBAREA=X:0X010000-X:0X01FFFF
+HDATAAREA=X:0X010000-X:0X01FFFF
+endif
+# Locate nvmUpdateDescriptors in a separate area of code space to keep them together
+# They need to be kept together, because the are referenced as an array of nvmUpdateDescriptors.
+# The user class for this is named: CONST_NVM
+CONSTNVMAREA=C:0X7F7E-C:0X7FAF
+HCONSTAREA=C:0X108000-C:0X10BFFF
+CODEAREA=C:$(CODEBEGIN)-C:0X7F7F,C:0X7FB0-C:$(CODEEND)
+
+# Memory classes specification for LFLAGS:
+CLASSSPEC:=CLASSES(BIT($(BITDATAAREA)),\
+                   DATA($(DATAAREA)),\
+                   IDATA($(IDATAAREA)),\
+                   XDATA($(XDATAAREA)),\
+                   XDATA_UPPER($(XDATAUPPERAREA)),\
+                   XDATA_LOWER($(XDATALOWERAREA)),\
+                   HDATA_LIB($(HDATALIBAREA)),\
+                   HDATA($(HDATAAREA)),\
+                   HCONST($(HCONSTAREA)),\
+                   XDATA_NON_ZERO_VARS_ZW (X:$(XDATA_NONZERO_VARS_ZW_BEGIN)-X:$(XDATA_NONZERO_VARS_ZW_END)),\
+                   XDATA_NON_ZERO_VARS_APP (X:$(XDATA_NONZERO_VARS_APP_BEGIN)-X:$(XDATA_NONZERO_VARS_APP_END)),\
+                   CODE($(CODEAREA)),\
+                   CONST_NVM($(CONSTNVMAREA)),\
+                   CONST($(CODEAREA)))
+
+# RFCONSTLOC=?CO?ZW_PHY_RF_050X_CONST (C:0X0100)
+# Application RF const table fixed adress in flash ROM - DON'T CHANGE THIS!!!
+APP_RFSETUPLOC=?CO?APP_RFSETUP (C:0X7FB0)
+
+# NVM module in protocol must be first in HDATA - DON'T CHANGE THIS!!!
+ifeq ($(filter nolib slave_prodtest_dut micro_rf_linkX,$(ZW_LIBRARY)),)
+PROTOCOL_NVMLOC=?FD?ZW_NVM (X:0X010000)
+endif # ifeq ($(filter nolib slave_prodtest_dut micro_rf_linkX,$(ZW_LIBRARY)),)
+
+
+ifneq ($(findstring ZW_firmware_bank1_mark, $(RELFILES)),)
+BANKMARKERSLOC:=?CO?ZW_FIRMWARE_BANK1_MARK (B1:LAST)
+endif
+
+ifneq ($(findstring ZW_firmware_bank2_mark, $(RELFILES)),)
+ifneq ($(BANKMARKERSLOC),)
+BANKMARKERSLOC:=$(BANKMARKERSLOC),
+endif
+BANKMARKERSLOC:=$(BANKMARKERSLOC)?CO?ZW_FIRMWARE_BANK2_MARK (B2:LAST)
+endif
+
+ifneq ($(findstring ZW_firmware_bank3_mark, $(RELFILES)),)
+ifneq ($(BANKMARKERSLOC),)
+BANKMARKERSLOC:=$(BANKMARKERSLOC),
+endif
+BANKMARKERSLOC:=$(BANKMARKERSLOC)?CO?ZW_FIRMWARE_BANK3_MARK (B3:LAST)
+endif
+
+
+FIRMWAREDESCRIPTORLOC=?CO?ZW_FIRMWARE_DESCRIPTOR_ADDR (C:$(FIRMEWAREDESCRIPTORADDR)),?CO?ZW_FIRMWARE_DESCRIPTOR (LAST)
+
+endif #/* ifneq ($(BOOTLOADER),) */
+endif #/* ifeq ($(CHIP),ZW050x) */
+
+#----- Build segment specification for fixed address segments for LFLAGS
+# Any fixed segments to specify ?
+ifneq ($(NVMCONSTLOC)$(RFTABLELOC)$(RFCONSTLOC)$(FIRMWAREDESCRIPTORLOC)$(BANKMARKERSLOC)$(APP_RFSETUPLOC)$(PROTOCOL_NVMLOC)$(APPLICATION_NVMLOC),)
+# Begin segment specification with "SEGMENTS("
+SEGMENTSPEC:=SEGMENTS(
+ifneq ($(NVMCONSTLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(NVMCONSTLOC)
+endif
+# Any RF setup table to locate at a fixed address ?
+ifneq ($(RFTABLELOC),)
+# Do we need a comma-separator here ? Not if this is first segment locator.
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(RFTABLELOC)
+endif
+ifneq ($(RFCONSTLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(RFCONSTLOC)
+endif
+ifneq ($(APP_RFSETUPLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(APP_RFSETUPLOC)
+endif
+ifneq ($(PROTOCOL_NVMLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(PROTOCOL_NVMLOC)
+endif
+ifneq ($(APPLICATION_NVMLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(APPLICATION_NVMLOC)
+endif
+ifneq ($(XDATATAILLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(XDATATAILLOC)
+endif
+ifneq ($(FIRMWAREDESCRIPTORLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(FIRMWAREDESCRIPTORLOC)
+endif
+ifneq ($(BANKMARKERSLOC),)
+ifneq "$(SEGMENTSPEC)" "SEGMENTS("
+SEGMENTSPEC:=$(SEGMENTSPEC),
+endif
+SEGMENTSPEC:=$(SEGMENTSPEC)$(BANKMARKERSLOC)
+endif
+# End segment specification with ")"
+SEGMENTSPEC:=$(SEGMENTSPEC))
+endif
+
+CFLAGS=\
+ CODE\
+ WARNINGLEVEL(2)\
+ OBJECTADVANCED\
+ LARGE\
+ LISTINCLUDE\
+ NOINTPROMOTE\
+ NOCOND\
+ INTVECTOR($(INT_VEC))\
+ OPTIMIZE(11,SIZE)\
+ INCDIR($(C51INC))\
+ SYMBOLS
+
+AFLAGS=\
+ INCDIR($(A51INC))\
+ NOREGISTERBANK\
+ XREF
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+LFLAGS=\
+ CODE\
+ NOOVERLAY\
+ DISABLEWARNING (8, 13, 16, 25, 47)\
+ PRINT($(RELSDIR)\$(TARGET).map)\
+ BANKAREA (0X008000, 0X00FFFF)\
+ $(CLASSSPEC)\
+ $(SEGMENTSPEC)
+else #/* ifeq ($(CODE_MEMORY_MODE),banking) */
+LFLAGS=\
+ CODE\
+ NODEFAULTLIBRARY\
+ NOOVERLAY\
+ DISABLEWARNING (9, 13, 16, 25, 47)\
+ PRINT($(RELSDIR)\$(TARGET).map)\
+ $(CLASSSPEC)\
+ $(SEGMENTSPEC)
+endif #/* ifeq ($(CODE_MEMORY_MODE),banking) */
+
+###################################
+# Where to look for prerequisites #
+###################################
+VPATH:=$(VPATH):$(ZWLIBROOT)\include:$(ZWLIBROOT)\IO_defines:$(TARGETBASEDIR):$(RELSDIR):$(TARGETDIR):$(KEILPATH)\inc:$(ZWUTILDIR):$(ZW_CMDHANDLER_DIR):$(ZW_APP_LIB_DIR)\cmdclass:$(ZW_APP_LIB_DIR)\devtypes:$(ZW_APP_LIB_DIR)\handler
+
+#########
+# Rules #
+#########
+
+# When the rule supplies a source for the compilation (in the pseudo-variable $<)
+# it will sometimes (when the source is found in VPATH) the last directory separator
+# will be a /. By using the variable defined below instead of $< all directory separators
+# will be correct.
+RULESRC=$(subst /,\,$<)
+
+# The "subst" command found in most of the rules escapes the
+# backslases found in MS-DOS paths, by replacing all backspaces
+# by two backspaces. If this isn't done the backspaces would result
+# in controlcodes and not directory separators.
+
+# In the rules a "$<" refers to the right side of the rule (ie. the sourcefile)
+# and a "$@" refers to the left side (ie. the destination file).
+
+# How to compile C source files (two rules in case that some of the files has
+# a capital C extension....)
+%.obj : %.c
+	@echo Compiling $(RULESRC)
+	@echo $(RULESRC) $(CFLAGS) > $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo DF($(CDEFINES),$(subst .obj,,$@)) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo PR($(LISTDIR)\$(subst .obj,.lst,$@)) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo OJ($(RELSDIR)\$@) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@$(CC) @$(subst \,\\,$(RELSDIR)\$(subst .obj,.cmd,$@))
+	@del $(RELSDIR)\$(subst .obj,.cmd,$@)
+
+%.obj : %.C
+	@echo Compiling $(RULESRC)
+	@echo $(RULESRC) $(CFLAGS) > $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo DF($(CDEFINES),$(subst .obj,,$@)) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo PR($(LISTDIR)\$(subst .obj,.lst,$@)) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo OJ($(RELSDIR)\$@) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@$(CC) @$(subst \,\\,$(RELSDIR)\$(subst .obj,.cmd,$@))
+	@del $(RELSDIR)\$(subst .obj,.cmd,$@)
+
+# How to assemble assembler source files
+%.obj : %.a51
+	@echo Assembling $(RULESRC)
+	@echo $(RULESRC) > $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo DF($(ADEFINES)) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo $(AFLAGS) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo OJ($(RELSDIR)\$@) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@echo PR($(LISTDIR)\$(@:.obj=.lst)) >> $(RELSDIR)\$(subst .obj,.cmd,$@)
+	@$(ASM) @$(subst \,\\,$(RELSDIR)\$(subst .obj,.cmd,$@))
+	@del $(RELSDIR)\$(subst .obj,.cmd,$@)
+
+# How to generate the dependency files from the C and assembler source files.
+%.d : %.c $(RELSDIR) $(LISTDIR)
+	@$(INCDEP) $(subst \,\\,$(RULESRC)) $(subst \,\\,$(RELSDIR)\$(@:.d=.obj)) $(subst \,\\,$(RELSDIRFULL)\$@)
+
+%.d : %.C $(RELSDIR) $(LISTDIR)
+	@$(INCDEP) $(subst \,\\,$(RULESRC)) $(subst \,\\,$(RELSDIR)\$(@:.d=.obj)) $(subst \,\\,$(RELSDIRFULL)\$@)
+
+%.d : %.a51 $(RELSDIR) $(LISTDIR)
+	@$(INCDEP) $(subst \,\\,$(RULESRC)) $(subst \,\\,$(RELSDIR)\$(@:.d=.obj)) $(subst \,\\,$(RELSDIRFULL)\$@)
+
+# How to generate the files with full path of the C and assembler source files found by MAKE, and in use.
+%.csrc: %.c
+	@echo $(RULESRC)> $(subst \,\\,$(RELSDIRFULL)\$@)
+
+%.csrc: %.C
+	@echo $(RULESRC)> $(subst \,\\,$(RELSDIRFULL)\$@)
+
+%.csrc: %.a51
+	@echo $(RULESRC)> $(subst \,\\,$(RELSDIRFULL)\$@)
+
+$(TARGETBASEDIR):
+	@if not exist $(TARGETBASEDIR)\NUL mkdir $(TARGETBASEDIR) > NUL
+
+$(RELSDIR): $(TARGETDIR)
+	@if not exist $(RELSDIR)\NUL mkdir $(RELSDIR) >NUL
+
+$(LISTDIR): $(TARGETDIR)
+	@if not exist $(LISTDIR)\NUL mkdir $(LISTDIR) >NUL
+
+$(TARGETDIR) : $(TARGETBASEDIR)
+	@if not exist $(TARGETDIR)\NUL mkdir $(TARGETDIR) >NUL
+
+.PHONY: dirs build clean depend all default check Makefile.Testdefines bootloader_ZW050x.aof

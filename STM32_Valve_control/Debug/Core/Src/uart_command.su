@@ -1,0 +1,3 @@
+uart_command.c:46:6:ZW_UART_transmit	64	static
+uart_command.c:111:6:ZW_UART_SEND_BYTE	8	static
+uart_command.c:117:12:uart_check_protocol	16	static

@@ -1,0 +1,95 @@
+AX51 MACRO ASSEMBLER  ZW_APP_VERSION                                                        11/02/21 02:44:45 PAGE     1
+
+
+MACRO ASSEMBLER AX51 V3.13.0.0
+OBJECT MODULE PLACED IN .\build\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_app_version.obj
+ASSEMBLER INVOKED BY: C:\Keil_v5\C51\bin\AX51.exe E:\SDK\Z-WAVE\IO_DEFINES\ZW_APP_VERSION.A51 DF(BOOTLOADER_ENABLED,US,Z
+                      W_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL
+                      ,BANKING) INCDIR(C:\Keil_v5\C51\inc;E:\SDK\Z-Wave\include;.\build\SwitchOnOff_slave_enhanced_232_O
+                      TA_ZW050x_TI\Rels;..\ApplicationUtilities) NOREGISTERBANK XREF OJ(.\build\SwitchOnOff_slave_enhanc
+                      ed_232_OTA_ZW050x_TI_Rels\ZW_app_version.obj) PR(.\build\SwitchOnOff_slave_enhanced_232_OTA_ZW050x
+                      _TI_list\ZW_app_version.lst) 
+
+LOC    OBJ             LINE     SOURCE
+
+                          1     ;#***************************************************************************
+                          2     ;#
+                          3     ;# Copyright (c) 2001-2013
+                          4     ;# Sigma Designs, Inc.
+                          5     ;# All Rights Reserved
+                          6     ;#
+                          7     ;#---------------------------------------------------------------------------
+                          8     ;*
+                          9     ;* Description: Makes the version for the application accessible from the
+                         10     ;*              library file during linking.
+                         11     ;*              Generates no code. Only public symbols in the obj file.
+                         12     ;*
+                         13     ;* Author:   Erik Friis Harck
+                         14     ;*
+                         15     ;* Last Changed By:  $Author: efh $
+                         16     ;* Revision:         $Revision: 9763 $
+                         17     ;* Last Changed:     $Date: 2008-01-10 11:28:42 +0100 (Thu, 10 Jan 2008) $
+                         18     ;*
+                         19     ;****************************************************************************
+                         20     
+                         21     ;#include "app_version.h"
+                    +1   22     
+                    +1   23     
+                    +1   24     
+                    +1   25     
+                    +1   26     
+                    +1   27     
+                    +1   28     
+                    +1   29     
+                    +1   30     ;#include "zaf_version.h"
+                    +2   31     
+                    +2   32     
+                    +2   33     
+                    +2   34     
+                    +2   35     
+                    +2   36     
+                    +2   37     
+                    +2   38     
+                    +1   39     
+                    +1   40     
+                    +1   41     
+                    +1   42     
+                    +1   43     
+                    +1   44     
+                    +1   45     
+                    +1   46     
+                         47     
+                         48     
+                         49     ; Make APP_VERSION and APP_REVISION public, so that Z-Wave protocol code can access it.
+                         50     ; Use it from C-code like this:
+                         51     ; extern unsigned char _APP_VERSION_;
+                         52     ; WORD_variable = (WORD)&_APP_VERSION_);
+                         53     
+AX51 MACRO ASSEMBLER  ZW_APP_VERSION                                                        11/02/21 02:44:45 PAGE     2
+
+                         54     PUBLIC  _APP_VERSION_MAJOR_
+                         55     PUBLIC  _APP_VERSION_MINOR_
+                         56     PUBLIC  _APP_VERSION_
+                         57     
+ 0004                    58     _APP_VERSION_MAJOR_     EQU     4
+ 0005                    59     _APP_VERSION_MINOR_     EQU     5
+ 0405                    60     _APP_VERSION_           EQU     (4 << 8) | 5
+                         61     
+                         62             END
+AX51 MACRO ASSEMBLER  ZW_APP_VERSION                                                        11/02/21 02:44:45 PAGE     3
+
+XREF SYMBOL TABLE LISTING
+---- ------ ----- -------
+
+
+N A M E              T Y P E  V A L U E     ATTRIBUTES / REFERENCES
+
+_APP_VERSION_ . . .  N  NUMB  0405H     A      56 60#
+_APP_VERSION_MAJOR_  N  NUMB  0004H     A      54 58#
+_APP_VERSION_MINOR_  N  NUMB  0005H     A      55 59#
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S).

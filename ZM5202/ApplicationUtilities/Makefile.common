@@ -1,0 +1,788 @@
+#****************************************************************************
+#
+#  Copyright (c) 2001-2014
+#  Sigma Designs, Inc.
+#  All Rights Reserved
+#
+#----------------------------------------------------------------------------
+#
+# Description:
+#    Commmon Makefile for the ZW0x0x development kit for
+#    all applications ready for the recursive make.
+#    This makefile defines the targets built
+#
+# Author:   Erik Friis Harck
+#
+#  Last Changed By:  $Author: efh $
+#  Revision:         $Revision: 18683 $
+#  Last Changed:     $Date: 2010-09-08 12:22:27 +0200 (on, 08 sep 2010) $
+#
+#****************************************************************************
+
+COMMON_INCLUDED:=yes
+# Default NO SECURITY included in protocol
+SECURITY_INCLUDED:=no
+
+# Only slave_enhanced_232 library contains support for SECURITY S0 and S2
+ifneq ($(findstring slave_enhanced_232,$(LIBRARY)),)
+SECURITY_INCLUDED:=yes
+endif
+
+# slave_routing library contains support for SECURITY S0 and S2
+ifneq ($(findstring slave_routing,$(LIBRARY)),)
+SECURITY_INCLUDED:=yes
+endif
+
+# The command to make dependencies from the headerfiles
+# included by a file.
+MAKEDEPEND=$(subst \,\\,$(TOOLSDIR)\IncDep\makedepend.exe)
+
+# The command to generate script content for generating uVision project files.
+UVISIONPROJECTGENERATOR=$(subst \,\\,$(TOOLSDIR)\uVisionProjectGenerator\uVisionProjectGenerator.exe)
+
+# The command to edit text strings in a stream
+SED=$(subst \,\\,$(TOOLSDIR)\texttools\sed-4-1-5\sed.exe)
+
+BDIRS=build
+
+MAKEOPTS=--no-print-directory -C
+
+default:
+
+# Include sticky targets (if any)
+-include Makefile.StickyTarget
+
+ifneq ($(MAKELEVEL),0)
+default: ZW0x0x
+endif
+
+# Declaration of a space to be used in references
+nullstring :=
+space := $(nullstring) # end of the line
+
+#---------------------------------------------------------------------------------------------------------
+# Following is a definition of the multidimensional array of target variants to be built.
+#
+# LIST_OF_VARIANTS contains the names of each dimension of the array, and is the mother of all other LIST_OF_.....
+# Each LIST_OF_.... defines the list of elements in each dimension.
+# You can exclude (filter-out) elements from these lists in your application Makefile, if you do it below (after) inclusion of $(ZWUTILDIR)\Makefile.common
+# You can add elements to these lists in your application Makefile, if you do it below (after) inclusion of $(ZWUTILDIR)\Makefile.common
+# You can define your own lists in your application Makefile, if you do it above (before) inclusion of $(ZWUTILDIR)\Makefile.common
+#
+# Be carefull with this mechanism. Your number of targets to build can explode, and thus the compile time.
+#
+# Full list of all VariantNames for unfolding the different variants of applications to be built (if not supplied by application).
+ifeq ($(LIST_OF_VARIANTS),)
+LIST_OF_VARIANTS:=LIBRARY FREQUENCY CODE_MEMORY_MODE SENSOR_TYPE CHIP
+endif
+
+# A default value for each VariantName must be assigned. They are used in the help texts.
+ifeq ($(LIBRARY_DEFAULT),)
+LIBRARY_DEFAULT:=controller_static
+endif
+ifeq ($(FREQUENCY_DEFAULT),)
+FREQUENCY_DEFAULT:=EU
+endif
+ifeq ($(CODE_MEMORY_MODE_DEFAULT),)
+CODE_MEMORY_MODE_DEFAULT:=banking
+endif
+ifeq ($(SENSOR_TYPE_DEFAULT),)
+SENSOR_TYPE_DEFAULT:=NON_BATT
+endif
+ifeq ($(CHIP_DEFAULT),)
+CHIP_DEFAULT:=ZW050x
+endif
+
+# Full list of all supported frequencies (if not supplied by application).
+ifeq ($(LIST_OF_FREQUENCY),)
+LIST_OF_FREQUENCY:=US EU ANZ HK IL IN RU JP KR CN ALL ALL_3CH
+endif
+
+# Full list of all supported code memory modes (if not supplied by application).
+ifeq ($(LIST_OF_CODE_MEMORY_MODE),)
+LIST_OF_CODE_MEMORY_MODE:=\
+ banking\
+ nonbanking
+
+# These CODE_MEMORY_MODEs makes no sense for ZW050x chips
+# ifeq ($(CHIP),ZW050x) // CHIP variable is not set for "help" (phony-)target
+LIST_OF_CODE_MEMORY_MODE:=$(filter-out nonbanking,$(LIST_OF_CODE_MEMORY_MODE))
+# endif
+endif # ifeq ($(LIST_OF_CODE_MEMORY_MODE),)
+
+# Full list of all supported libraries (if not supplied by application).
+ifeq ($(LIST_OF_LIBRARY),)
+LIST_OF_LIBRARY:=\
+ controller_bridge\
+ controller_portable\
+ controller_static\
+ controller_static_single\
+ slave_enhanced_232\
+ slave_enhanced_232_timing\
+ slave_routing\
+ slave_prodtest_gen
+endif
+
+# Full list of all supported sensor types (if not supplied by application).
+ifeq ($(LIST_OF_SENSOR_TYPE),)
+LIST_OF_SENSOR_TYPE:=NON_BATT BATTERY BATTERY__CC_WAKEUP
+endif
+
+# Full list of all supported chips (if not supplied by application).
+ifeq ($(LIST_OF_CHIP),)
+LIST_OF_CHIP:=ZW050x
+endif
+
+#---------------------------------------------------------------------------------------------------------
+# ADDITION TO THE VARIANTS TO BUILD
+#---------------------------------------------------------------------------------------------------------
+# Add a dimension "WATCHDOG" to the build array
+#
+# WATCHDOG variant must be added in front of LIST_OF_VARIANTS to be handled last,
+# and for the filtering below in this Makefile to work. (LIST_OF_VARIANTS+= WATCHDOG # does not work correctly)
+LIST_OF_VARIANTS:=$(LIST_OF_VARIANTS) WATCHDOG
+# A full list of values for each VariantName must be assigned.
+ifeq ($(LIST_OF_WATCHDOG),)
+LIST_OF_WATCHDOG:=WATCHDOG_DISABLED WATCHDOG_ENABLED
+endif
+# A default value for each VariantName must be assigned. They are used in the help texts.
+WATCHDOG_DEFAULT:=WATCHDOG_DISABLED
+# An option variable for each VariantName must be assigned to be considered during "make",
+# and of course, the application source code must be prepared to distinguish between variants.
+ifeq ($(WATCHDOG),WATCHDOG_ENABLED)
+WATCHDOG_OPTION:=WATCHDOG_ENABLED=1
+WATCHDOG_ENABLED:=1
+endif
+ifneq ($(WATCHDOG_ENABLED),)
+ifneq ($(BOOT),BOOTLOADER)
+# Modify target name to indicate that watchdog is enabled.
+TARGET:=$(TARGET)_WD
+TARGETDIR:=$(TARGETDIR)_WD
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+# Include watchdog activation during compilation.
+CDEFINES+=WATCHDOG_ENABLED
+endif
+endif
+
+#---------------------------------------------------------------------------------------------------------
+
+# List of subset of 3 channel frequencies (do not change this).
+ifeq ($(THREE_CHANNEL_FREQUENCIES),)
+THREE_CHANNEL_FREQUENCIES:=JP JP_DK KR ALL_3CH
+endif
+
+#---------------------------------------------------------------------------------------------------------
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+# List ZW_library modules, forced into COMMON bank
+# Only force USB modules into COMMON if target is a USB target (none UART)
+ifneq ($(COMMON_ZWLIB_MODULES_APPLICATION_SPECIFIC),)
+COMMON_ZWLIB_MODULES+=$(COMMON_ZWLIB_MODULES_APPLICATION_SPECIFIC)
+endif
+
+# List ZW_library modules, forced into BANK1 (whichever ZW_library we use)
+# OBS! These lists of modules must be in sync (same sequence) as the sequence,
+#      they are listed in during build of the libraries from Makefile.???_ZW0x0x.stdRels.
+#      Else it will be impossible to build identical banked hex files for applications
+#      with command line make/uVision build. In uVision you can only specify which
+#      modules to force load from a library, and not the sequence.
+
+BANK1_ZWLIB_CONTROLLER:=
+
+BANK3_ZWLIB_CONTROLLER:=
+
+ifneq ($(findstring controller,$(LIBRARY)),)
+BANK1_ZWLIB_CONTROLLER:=\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_NVM_REARRANGE,\
+ ZW_NVM_INIT,\
+ ZW_TIMER,\
+ ZW_NODEMASK,\
+ ZW_ROUTING,\
+ ZW_ROUTING_INIT,\
+ ZW_ROUTING_CACHE,\
+ ZW_ROUTING_CACHE_SUPPORT,\
+ ZW_CONTROLLER,\
+ ZW_CONTROLLER_SUPPORT,\
+ ZW_EVENT,\
+ ZW_EXPLORE,\
+ ZW_EXPLORE_SUPPORT,\
+ ZW_EXPLORE_INCL_REQ,\
+ ZW_EXPLORE_EXCL_REQ,\
+ ZW_HW_INIT,\
+ ZW_RF_DRIVER_INIT,\
+ ZW_TXQ_PROTOCOL,\
+ ZW_TX_QUEUE
+
+BANK3_ZWLIB_CONTROLLER:=\
+ ZW_PORTPIN,\
+ ZW_TRANSPORT,\
+ ZW_REPLICATION,\
+ ZW_REPLICATION_SUPPORT
+endif
+
+ifeq ($(LIBRARY),controller_bridge) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ $(BANK1_ZWLIB_CONTROLLER)
+
+endif # /* ifeq ($(LIBRARY),controller_bridge) */
+
+ifeq ($(LIBRARY),controller_installer) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ $(BANK1_ZWLIB_CONTROLLER)
+
+endif # /* ifeq ($(LIBRARY),controller_installer) */
+
+ifeq ($(LIBRARY),controller_portable) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ $(BANK1_ZWLIB_CONTROLLER)
+
+endif # /* ifeq ($(LIBRARY),controller_portable) */
+
+ifeq ($(LIBRARY),controller_static) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ $(BANK1_ZWLIB_CONTROLLER)
+
+endif # /* ifeq ($(LIBRARY),controller_static) */
+
+ifeq ($(LIBRARY),controller_static_single) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_NODEMASK,\
+ ZW_ROUTING,\
+ ZW_ROUTING_INIT,\
+ ZW_ROUTING_CACHE,\
+ ZW_ROUTING_CACHE_SUPPORT,\
+ ZW_CONTROLLER,\
+ ZW_CONTROLLER_SUPPORT,\
+ ZW_HW_INIT,\
+ ZW_RF_DRIVER_INIT,\
+ ZW_TXQ_PROTOCOL,\
+ ZW_TX_QUEUE
+
+endif # /* ifeq ($(LIBRARY),controller_static_single) */
+
+ifeq ($(LIBRARY),slave_enhanced) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_TRANSPORT,\
+ ZW_ROUTING_ALL,\
+ ZW_SLAVE,\
+ ZW_EVENT,\
+ ZW_EXPLORE,\
+ ZW_EXPLORE_SUPPORT,\
+ ZW_EXPLORE_INCL_REQ,\
+ ZW_HW_INIT,\
+ ZW_RF_DRIVER_INIT,\
+ ZW_TXQ_PROTOCOL,\
+ ZW_TX_QUEUE
+endif # /* ifeq ($(LIBRARY),slave_enhanced) */
+
+ifeq ($(LIBRARY),slave_enhanced_232) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ ZW_TRANSPORT,\
+ ZW_TRANSPORT_MULTI,\
+ ZW_ROUTING_ALL,\
+ ZW_SLAVE,\
+ ZW_HW_INIT,\
+ ZW_RF_DRIVER_INIT,\
+ ZW_TXQ_PROTOCOL,\
+ ZW_TX_QUEUE,\
+ LIST
+
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_CRC,\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_NODEMASK,\
+ ZW_EVENT,\
+ ZW_EXPLORE,\
+ ZW_EXPLORE_SUPPORT,\
+ ZW_EXPLORE_INCL_REQ,\
+ ZW_EXPLORE_EXCL_REQ,\
+ ZW_POWER_MANAGEMENT,\
+ ZW_NOISE_DETECT
+
+endif # /* ifeq ($(LIBRARY),slave_enhanced_232) */
+
+ifeq ($(LIBRARY),slave_enhanced_232_timing) # OBS! See comment above about sequence.
+
+BANK1_ZWLIB_MODULES:=\
+ ZW_TRANSPORT,\
+ ZW_NODEMASK,\
+ ZW_ROUTING_ALL,\
+ ZW_SLAVE,\
+ ZW_HW_INIT,\
+ ZW_RF_DRIVER_INIT,\
+ ZW_TXQ_PROTOCOL,\
+ ZW_TX_QUEUE,\
+ ZW_EXPLORE_SUPPORT,\
+ ZW_EXPLORE_INCL_REQ,\
+ ZW_EXPLORE_EXCL_REQ,\
+ ZW_NOISE_DETECT,\
+ LIST
+
+
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_PORTPIN,\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_EVENT,\
+ ZW_EXPLORE
+
+endif # /* ifeq ($(LIBRARY),slave_enhanced_232_timing) */
+
+ifeq ($(LIBRARY),slave_routing) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ ZW_INTERNAL_NVM,\
+ ZW_TRANSPORT,\
+ ZW_TRANSPORT_MULTI,\
+ ZW_SLAVE,\
+ ZW_EXPLORE_SUPPORT,\
+ ZW_EXPLORE_INCL_REQ,\
+ ZW_EXPLORE_EXCL_REQ,\
+ ZW_HW_INIT,\
+ ZW_RF_DRIVER_INIT
+
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_PORTPIN,\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_EVENT,\
+ ZW_EXPLORE
+
+endif # /* ifeq ($(LIBRARY),slave_routing) */
+
+ifeq ($(LIBRARY),slave_prodtest_gen) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ ZW_INTERNAL_NVM,\
+ ZW_MEM,\
+ ZW_MEM_SUPPORT,\
+ ZW_MEM_API,\
+ ZW_TRANSPORT_SUPPORT,\
+ ZW_RF_DRIVER_INIT
+
+endif # /* ifeq ($(LIBRARY),slave_prodtest_gen) */
+
+ifeq ($(LIBRARY),slave_prodtest_dut) # OBS! See comment above about sequence.
+BANK1_ZWLIB_MODULES:=\
+ ZW_TRANSPORT,\
+ ZW_TRANSPORT_SUPPORT
+
+endif # /* ifeq ($(LIBRARY),slave_prodtest_dut) */
+
+
+# Only force USB modules into BANK1 if target is a USB target (none UART)
+ifneq ($(BANK3_ZWLIB_MODULES_APPLICATION_SPECIFIC),)
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ $(BANK3_ZWLIB_MODULES_APPLICATION_SPECIFIC)
+endif
+
+ifeq ($(findstring ZW_TRANSPORT_SUPPORT,$(BANK1_ZWLIB_MODULES)),)
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_TRANSPORT_SUPPORT,\
+ ZW_NVR
+
+ifneq ($(findstring controller,$(LIBRARY)),)
+
+BANK3_ZWLIB_MODULES+=,\
+ ZW_TRANSPORT_TIMER,\
+ ZW_CRC,\
+ ZW_TOOLS
+
+else
+
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_TRANSPORT_TIMER
+
+endif
+
+endif
+
+ifeq ($(SECURITY_INCLUDED),yes)
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_SECURITY_SCHEME0,\
+ ZW_SECURITY_SCHEME2,\
+ ZW_S2_INCLUSION_GLUE,\
+ SECURE_LEARN
+
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_UART_SUPPORT,\
+ ZW_UART0_SUPPORT,\
+ ZW_UART1_SUPPORT
+
+ifneq ($(LIBRARY),slave_routing) # OBS! See comment above about sequence.
+ifneq ($(BANK1_ZWLIB_MODULES),)
+BANK1_ZWLIB_MODULES+=,
+endif
+BANK1_ZWLIB_MODULES+=\
+ ZW_SECURE_LEARN_SUPPORT,\
+ ZW_NVM_REARRANGE
+
+endif # /* ifneq ($(LIBRARY),slave_routing) */
+
+ifneq ($(BANK1_ZWLIB_MODULES),)
+BANK1_ZWLIB_MODULES+=,
+endif
+BANK1_ZWLIB_MODULES+=\
+ ZW_NVM_INIT,\
+ ZW_KEYSTORE,\
+ ZW_CTIMER
+
+endif # /* ifeq ($(SECURITY_INCLUDED),yes) */
+
+ifneq ($(BANK3_ZWLIB_CONTROLLER),)
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ $(BANK3_ZWLIB_CONTROLLER)
+
+endif # /* ifneq ($(BANK3_ZWLIB_CONTROLLER),) */
+
+# Only force firmware update modules if target is bootloader/firmwareupdate enabled
+ifneq ($(BOOTLOADER_ENABLED),)
+ifneq ($(BANK3_ZWLIB_MODULES),)
+BANK3_ZWLIB_MODULES+=,
+endif
+BANK3_ZWLIB_MODULES+=\
+ ZW_FIRMWARE_UPDATE_NVM,\
+ ZW_FIRMWARE_UPDATE_NVM_FLASH,\
+ ZW_FIRMWARE_UPDATE_NVM_WRITE
+
+endif # /* ifneq ($(BOOTLOADER_ENABLED),) */
+
+-include $(ZWUTILDIR)\Makefile.misc
+
+endif #ifeq ($(CODE_MEMORY_MODE),banking)
+
+# List of object modules constituting the program for the different code memory modes.
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+# build the project the banked way.
+COMMON_RELFILES+=\
+ ZW_L51_BANK.obj
+
+# OTA Firmware BANK markers, only useful when BOOTLOADER_ENABLED
+ifneq ($(BOOTLOADER_ENABLED),)
+BANK1_RELFILES:=\
+ ZW_firmware_bank1_mark.obj
+else
+BANK1_RELFILES:=
+endif
+
+ifneq ($(BOOTLOADER_ENABLED),)
+# Put applications modules into BANK2
+BANK2_RELFILES:=$(RELFILES)\
+ ZW_firmware_bank2_mark.obj
+else
+BANK2_RELFILES:=$(RELFILES)
+endif
+
+ifneq ($(BOOTLOADER_ENABLED),)
+BANK3_RELFILES:=\
+ ZW_firmware_bank3_mark.obj
+else
+BANK3_RELFILES:=
+endif
+
+RELFILES:=$(COMMON_RELFILES) $(BANK1_RELFILES) $(BANK2_RELFILES) $(BANK3_RELFILES)
+
+endif #ifeq ($(CODE_MEMORY_MODE),banking)
+
+ifeq ($(BOOTLOADER),)
+ifeq ($(CODE_MEMORY_MODE),nonbanking)
+# build the project the nonbanking way.
+endif
+endif
+
+
+#---------------------------------------------------------------------------------------------------------
+
+# The following will be used to name the application equal to it's directory name (if not supplied by application).
+ifeq ($(APP_NAME),)
+APP_NAME:=$(PRODUCTDIR)
+endif
+
+##***************************************************************************/
+
+# The machine generated Makefile.variants must be included before any references to $(TARGET_IN),
+# absolutely nothing will be built.
+-include Makefile.variants
+
+##***************************************************************************/
+# Include test targets (if any)
+-include Makefile.TestTargets
+# Include production targets (if any)
+-include Makefile.ProductionTargets
+
+ZW0x0x: clearerror Makefile.variants $(TARGET_IN)
+
+ifeq ($(MAKELEVEL),0)                                             # If we are at the entry level of the recursive make engine
+clearerror:
+	@cmd /c "if exist error.txt del error.txt /q"
+endif
+
+prerequisites: Makefile.variants
+
+# make-functions for unfolding the different variants of applications to be built
+AppendAppendix=$(1)_APPENDIX
+PrependUnderscore=_$(1)
+AppendHelp=$(1)_HELP
+PrependListOf=LIST_OF_$(1)
+AssignExample="$(1)=$(2)"
+AppendDefault=$(1)_DEFAULT
+AppendVar=$(1)_VAR
+AppendOption=$(1)_OPTION
+DefineAppendixFor=$(call AppendAppendix,$(1)):=$(call PrependUnderscore,$(1))
+DefineHelpFor=$(call AppendHelp,$(1)):=^^ $(call AssignExample,$(1),$(2))
+DefineExampleFor=$(call AssignExample,$(1),$(2))
+variantAppendixesRefs:=$(subst $(space),,$(foreach variant,$(LIST_OF_VARIANTS),$$($(call AppendAppendix,$(variant)))))
+variantAppendixesRefsOut=$(subst $(space),,$(foreach variant,$(LIST_OF_VARIANTS),$$($(call AppendAppendix,$(variant)))))
+variantAppendixes:=$(subst $(space),,$(foreach variant,$(LIST_OF_VARIANTS),$(call PrependUnderscore,$(variant))))
+variantAppendixesOut=$(subst $(space),,$(foreach variant,$(LIST_OF_VARIANTS),$(call PrependUnderscore,$(variant))))
+variantHelpRefs=$(subst $(space),,$(foreach variant,$(LIST_OF_VARIANTS),$$($(call AppendHelp,$(variant)))))
+variantOptions=$(foreach variant,$(LIST_OF_VARIANTS),$$($(call AppendOption,$(variant))))
+
+Makefile.variants: Makefile $(ZWUTILDIR)\Makefile.common
+	@echo # Machine generated part of Makefile supporting defined LIST_OF_VARIANTS.> Makefile.variants
+	@echo #>> Makefile.variants
+	@echo #--------------------------------------------------------------------------------------------------------------------------->> Makefile.variants
+	@echo # For every parameter, which is defined, indicate so, and if not, then indicate help for it.>> Makefile.variants
+	$(foreach variant, $(LIST_OF_VARIANTS), @echo # If $(variant) is defined, indicate so>> Makefile.variants& \
+	                                        @echo ifneq ($$($(variant)),)>> Makefile.variants& \
+	                                        @echo $(call DefineAppendixFor,$(variant))>> Makefile.variants& \
+	                                        @echo else>> Makefile.variants& \
+	                                        @echo $(call DefineHelpFor,$(variant),$($(call AppendDefault,$(variant))))>> Makefile.variants& \
+	                                        @echo endif>> Makefile.variants& \
+	                                        @echo #>>Makefile.variants&)
+	@echo TARGET_IN:=TARGET_OUT$(variantAppendixesRefsOut)>>Makefile.variants
+	@echo TARGET_OUT:=TARGET_OUT$(variantAppendixesOut)>>Makefile.variants
+	@echo #--------------------------------------------------------------------------------------------------------------------------->> Makefile.variants
+	@echo # This is the heart of the recursion engine.>> Makefile.variants
+	@echo # For every parameter that is not defined, a list of values will be walked through.>> Makefile.variants
+	@echo # The recursion digs through this nested ifs untill all parameters are defined, working from the innermost to the outermost.>> Makefile.variants
+	@echo #>> Makefile.variants
+	$(foreach variant, $(LIST_OF_VARIANTS), @echo # If $(variant) is not specified like MK $(call DefineExampleFor,$(variant),$($(call AppendDefault,$(variant)))) ...., then make for all $(variant) in $(call PrependListOf,$(variant)).>> Makefile.variants& \
+	                                        @echo ifeq ($$($(variant)),)>> Makefile.variants& \
+	                                        @echo $$(TARGET_IN):>> Makefile.variants& \
+	                                        @echo 	@(for /F "usebackq" %%%%i in (`echo $$($(call PrependListOf,$(variant)))^^^| $$(SED) "s/ /\n/g"`) do if __errorlevel__ LSS 2 $$(MAKE) --no-print-directory "$(variant)=%%%%i") ^|^| exit ^1>> Makefile.variants& \
+	                                        @echo else>> Makefile.variants&)
+	$(foreach variant, $(LIST_OF_VARIANTS), @echo endif>> Makefile.variants&)
+	@echo #--------------------------------------------------------------------------------------------------------------------------->> Makefile.variants
+	@echo # For every parameter, which is not defined, list help for it.>> Makefile.variants
+	@echo help:>> Makefile.variants
+	@echo 	@echo SYNOPSIS:>> Makefile.variants
+	@echo ifneq ($$(oldpath),)>> Makefile.variants
+	@echo 	@echo  ^^^> mk$(variantHelpRefs) ....>> Makefile.variants
+	@echo else>> Makefile.variants
+	@echo 	@echo  ^^^> make$$(subst ^",,$(variantHelpRefs)) ....>> Makefile.variants
+	@echo endif>> Makefile.variants
+	@echo 	@echo ->> Makefile.variants
+	$(foreach variant, $(LIST_OF_VARIANTS), @echo ifneq ($$($(call AppendHelp,$(variant))),)>> Makefile.variants& \
+	                                        @echo 	@echo List of available $(variant):>> Makefile.variants& \
+	                                        @echo 	@echo         $$($(call PrependListOf,$(variant)))>> Makefile.variants& \
+	                                        @echo endif>> Makefile.variants&)
+	@echo ##############################################################################################################>> Makefile.variants
+	@echo # Uniform target for all combinations of parameters>> Makefile.variants
+	@echo #>> Makefile.variants
+	@echo $$(TARGET_OUT):MAKELINE=$$(APP) $(variantOptions)>> Makefile.variants
+	@echo $$(TARGET_OUT):>> Makefile.variants
+	@echo 	@(for /F "usebackq" %%%%i in (`echo prerequisites depend all^^^| $$(SED) "s/ /\n/g"`) do if __errorlevel__ LSS 2 $$(MAKE) $$(MAKEOPTS) . $$(MAKELINE) %%%%i) ^|^| exit ^1>> Makefile.variants
+	@echo ##############################################################################################################>> Makefile.variants
+	@$(SED) -i -e "s/__/^!/g" Makefile.variants
+
+#ifeq ($(STICKY_TARGET),)                                          # If we still do not have a sticky target
+ifeq ($(MAKELEVEL),0)                                             # If we are at the entry level of the recursive make engine
+ifeq ($(TARGET_IN),$(TARGET_OUT))                                 # If we have all possible build parameters defined
+default: ZW0x0x
+	@echo ifeq ($$(MAKELEVEL),0)> Makefile.StickyTarget
+	@echo default: sticky>> Makefile.StickyTarget
+	@echo sticky: clearerror>> Makefile.StickyTarget
+	@echo 	$$(MAKE) $$(MAKEOPTS) . $(foreach variant, $(LIST_OF_VARIANTS), $(variant)=$($(variant)))>> Makefile.StickyTarget
+	@echo else>> Makefile.StickyTarget
+	@echo default: ZW0x0x>> Makefile.StickyTarget
+	@echo endif>> Makefile.StickyTarget
+	@echo #>> Makefile.StickyTarget
+	@echo STICKY_TARGET:=yes>> Makefile.StickyTarget
+STICKY_TARGET:=yes
+endif
+endif
+#endif
+
+ifeq ($(STICKY_TARGET),)
+ifeq ($(MAKELEVEL),0)
+default: help
+endif
+endif
+
+# Check if frequency is a 3 channel frequency, and set so, if it is.
+ifneq ($(filter $(FREQUENCY),$(THREE_CHANNEL_FREQUENCIES)),)
+THREE_CHANNEL_OPTION:=3CH=YES
+endif
+
+ifeq ($(SENSOR_TYPE),NON_BATT)
+APP_NAME_SUBDIR:=$(APP_NAME)
+else
+ifeq ($(SENSOR_TYPE),BATTERY__CC_WAKEUP)
+APP_NAME_SUBDIR:=$(APP_NAME)_Battery_wakeUp
+else
+APP_NAME_SUBDIR:=$(APP_NAME)_Battery
+endif
+endif
+
+APP:=APP=$(APP_NAME_SUBDIR)
+
+# An option variable for each VariantName must be assigned to be considered during "make".
+#
+# FREQUENCY:
+FREQUENCY_OPTION:=COUNTRY=$(FREQUENCY) $(THREE_CHANNEL_OPTION) RF=$(subst ALL_3CH,ALL,$(subst TF_,,$(subst _DK,,$(FREQUENCY))))
+#
+# LIBRARY:
+LIBRARY_OPTION:=LIB=$(LIBRARY)
+#
+# SENSOR_TYPE:
+SENSOR_TYPE_OPTION:=SENSOR_TYPE=$(SENSOR_TYPE)
+#
+# CHIP:
+CHIP_OPTION:=CHIP=$(CHIP)
+#
+
+dirs: $(BDIRS)
+
+##***************************************************************************/
+
+# Deletes all generated files (relocatables, downloadables,
+# dependency files and the generated C and headerfiles from ZUIB)
+clean:
+	@cmd /c "if exist build\NUL rd build /s /q"
+	@cmd /c "if exist Makefile.StickyTarget del Makefile.StickyTarget /q"
+	@cmd /c "if exist Makefile.variants del Makefile.variants /q"
+
+##***************************************************************************/
+
+
+help_tf: help
+
+# Catch all targets which we do not handle and tell world that
+%:
+	@echo Could not find rule for target '$@'
+	@echo Some of the known targets are :
+	@echo   ZW0x0x     : ZW050x targets
+	@echo   ZW0x0x_tf  : ZW050x test frequency targets
+	@echo   clean      : Erase all generated files
+	@echo   help       : List the possible targets to build
+	@echo -
+
+ifneq ($(filter depend all,$(MAKECMDGOALS)),)
+
+# Include test defines (if any)
+-include Makefile.TestDefines
+
+# Append a suitable appendix to target name according to CODE_MEMORY_MODE
+
+ifeq ($(BOOTLOADER),)
+ifneq ($(findstring nonbanking,$(CODE_MEMORY_MODE)),)
+TARGET:=$(TARGET)_nonbanking
+TARGETDIR:=$(TARGETDIR)_nonbanking
+endif
+endif
+
+include $(ZWUTILDIR)\Makefile.common_ZW0x0x_appl
+
+# Defines for the C compiler
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ $(COUNTRY),\
+ ZAF_BUILD_NO=$(BUILD_NUMBER)
+
+ifeq ($(SECURITY_INCLUDED),yes)
+CDEFINES+=,\
+ ZW_SECURITY_PROTOCOL
+
+ifeq ($(LIBRARY),slave_routing)
+CDEFINES+=,\
+ ZW_SECURITY_PROTOCOL_SINGLE_NETWORK_KEY
+endif
+
+endif
+
+ifneq ($(ADEFINES),)
+ADEFINES+=,
+endif
+ADEFINES+=\
+ $(COUNTRY)
+
+-include $(ZWUTILDIR)\Makefile.common_ZW0x0x_understand
+
+include $(ZWUTILDIR)\Makefile.common_ZW0x0x
+
+-include $(ZWUTILDIR)\Makefile.common_ZW0x0x_uvision
+
+endif
+
+# All targets that shouldn't result in a file/directory
+# with the same name as the target should be listed here.
+# Otherwise the above rule will make a directory with
+# the targetname
+
+.PHONY: dirs\
+ clean\
+ prerequisites\
+ depend\
+ all\
+ default\
+ help\
+ help_tf\
+ world\
+ ZW0x0x\
+ ZW050x\
+ ZW050\
+ Makefile.TestDefines\
+ Makefile.TestTargets\
+ Makefile.ProductionTargets\
+ Makefile.FrameworkSupport\
+ Makefile.TestInterface\
+ $(ZWUTILDIR)\Makefile.common_ZW0x0x_understand\
+ Makefile.StickyTarget\
+ $(ZWUTILDIR)\Makefile.misc\
+ clearerror\
+ $(APP_NAME)
+

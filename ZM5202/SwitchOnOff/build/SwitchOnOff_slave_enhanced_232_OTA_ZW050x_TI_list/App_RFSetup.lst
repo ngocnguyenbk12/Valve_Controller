@@ -1,0 +1,244 @@
+C51 COMPILER V9.54   APP_RFSETUP                                                           11/02/2021 02:44:03 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE APP_RFSETUP
+OBJECT MODULE PLACED IN .\build\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\App_RFSetup.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\bin\C51.exe APP_RFSETUP.C CODE WARNINGLEVEL(2) OBJECTADVANCED LARGE LISTINCLUDE NOIN
+                    -TPROMOTE NOCOND INTVECTOR(0X1800) OPTIMIZE(11,SIZE) INCDIR(E:\SDK\Z-Wave\include,E:\SDK\Z-Wave\IO_defines,.\build,.\buil
+                    -d\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels,C:\Keil_v5\C51\inc,..\ApplicationUtilities,..\ApplicationCommandHand
+                    -lers,..\..\zlib\cmdclass,..\..\zlib\devtypes,..\..\zlib\handler,E:\SDK\Z-Wave\\IO_defines) SYMBOLS DF(BOOTLOADER_ENABLED
+                    -,slave_enhanced_232,US,ZAF_BUILD_NO=52445,ZW_SECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTI
+                    -NG,ZW050x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL,BANKING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTAR
+                    -T_ENABLED,App_RFSetup) PR(.\build\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_list\App_RFSetup.lst) OJ(.\build\SwitchOn
+                    -Off_slave_enhanced_232_OTA_ZW050x_TI_Rels\App_RFSetup.obj)
+
+line level    source
+
+   1          /****************************************************************************
+   2           *
+   3           * Copyright (c) 2001-2013
+   4           * Sigma Designs, Inc.
+   5           * All Rights Reserved
+   6           *
+   7           *---------------------------------------------------------------------------
+   8           *
+   9           * Description: Application ZW0x0x RF setting setup table
+  10           *
+  11           * Author:   Johann Sigfredsson
+  12           *
+  13           * Last Changed By:  $Author: efh $
+  14           * Revision:         $Revision: 9763 $
+  15           * Last Changed:     $Date: 2008-01-10 11:28:42 +0100 (Thu, 10 Jan 2008) $
+  16           *
+  17           ****************************************************************************/
+  18          #include "ZW_rf050x.h"
+   1      =1  /********************************  ZW_RF050X.H  *****************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Z-Wave, the wireless lauguage.
+  11      =1   *
+  12      =1   *              Copyright (c) 2001
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Application flash ROM RF table offset for ZW050x
+  25      =1   *
+  26      =1   * Author:   Samer Seoud
+  27      =1   *
+  28      =1   * Last Changed By:  $Author: sse $
+  29      =1   * Revision:         $Revision: 10862 $
+  30      =1   * Last Changed:     $Date: 2008-08-04 16:27:12 +0200 (Mon, 04 Aug 2008) $
+C51 COMPILER V9.54   APP_RFSETUP                                                           11/02/2021 02:44:03 PAGE 2   
+
+  31      =1   *
+  32      =1   ****************************************************************************/
+  33      =1  #ifndef _ZW_RF050X_H_
+  34      =1  #define _ZW_RF050X_H_
+  35      =1  
+  36      =1  /****************************************************************************/
+  37      =1  /*                              INCLUDE FILES                               */
+  38      =1  /****************************************************************************/
+  39      =1  
+  40      =1  
+  41      =1  /****************************************************************************/
+  42      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  43      =1  /****************************************************************************/
+  44      =1  
+  45      =1  
+  46      =1  #define RF_MAGIC_VALUE          0x42
+  47      =1  
+  48      =1  typedef struct _FLASH_APPL_TABLE_
+  49      =1  {
+  50      =1    unsigned char dummy1;
+  51      =1    unsigned char dummy2;
+  52      =1    /* Normal power setting offset */
+  53      =1    unsigned char FLASH_APPL_NORM_POWER_OFFS_0;
+  54      =1    unsigned char FLASH_APPL_NORM_POWER_OFFS_1;
+  55      =1    unsigned char FLASH_APPL_NORM_POWER_OFFS_2;
+  56      =1    /* Low power setting offset */
+  57      =1    unsigned char FLASH_APPL_LOW_POWER_OFFS_0;
+  58      =1    unsigned char FLASH_APPL_LOW_POWER_OFFS_1;
+  59      =1    unsigned char FLASH_APPL_LOW_POWER_OFFS_2;
+  60      =1  } tsFlashApplTable;
+  61      =1  
+  62      =1  
+  63      =1  /* Valid values for FLASH_FREQ */
+  64      =1  typedef enum _RF_ID_ENUM_
+  65      =1  {
+  66      =1    RF_EU = 0,          /* EU frequency (868.42MHz) */
+  67      =1    RF_US = 1,          /* US frequency (908.42MHz) */
+  68      =1    RF_ANZ = 2,         /* Australia/Newzealand frequency (921.42MHz) */
+  69      =1    RF_HK = 3,          /* hongkong frequency (919.82MHz) */
+  70      =1    RF_TF_866 = 4,      /* test frequency (866.xxMHz) */
+  71      =1    RF_TF_870 = 5,      /* test frequency (870.xxMHz) */
+  72      =1    RF_TF_906 = 6,      /* test frequency (906.xxMHz) */
+  73      =1    RF_TF_910 = 7,      /* test frequency (910.xxMHz) */
+  74      =1    RF_MY = 8,          /* Maylasyia frequency (868.2MHz) */
+  75      =1    RF_IN = 9,          /* Indian frequency (865.22MHz) */
+  76      =1    RF_JP = 10,         /* Japan frequency (920.1MHz) */
+  77      =1    RF_TF_878 = 11,     /* test frequency (878.xxMHz) */
+  78      =1    RF_TF_882 = 12,     /* test frequency (882.xxMHz) */
+  79      =1    RF_TF_886 = 13,     /* test frequency (886.xxMHz) */
+  80      =1    RF_TF_932_3CH = 14, /* test frequency (932.xxMHz) */
+  81      =1    RF_TF_940_3CH = 15, /* test frequency (940.xxMHz) */
+  82      =1    RF_TF_840_3CH = 16, /* test frequency (840.xxMHz) */
+  83      =1    RF_TF_850_3CH = 17, /* test frequency (850.xxMHz) */
+  84      =1    RF_JP_32MHZ = 18,   /* Japan frequency (xxx.xxMHz) */
+  85      =1    RF_TF_836_3CH = 19, /* test frequency (836.xxMHz) */
+  86      =1    RF_TF_841_3CH = 20, /* test frequency (841.xxMHz) */
+  87      =1    RF_TF_851_3CH = 21, /* test frequency (851.xxMHz) */
+  88      =1    RF_TF_933_3CH = 22, /* test frequency (933.xxMHz) */
+  89      =1    RF_TF_941_3CH = 23, /* test frequency (941.xxMHz) */
+  90      =1    RF_TF_835_3CH = 24, /* test frequency (835.xxMHz) */
+  91      =1    RF_JP_950 = 25,     /* Japan frequency (951.1MHz) */
+  92      =1    RF_RU = 26,         /* Russia Frequency */
+C51 COMPILER V9.54   APP_RFSETUP                                                           11/02/2021 02:44:03 PAGE 3   
+
+  93      =1    RF_IL = 27,         /* Israelian frequency (916.0xMHz) */
+  94      =1    RF_KR = 28,         /* Korean Republic frequency (919.7xMHz) */
+  95      =1    RF_CN = 29,         /* Chinese (PRC) frequency (868.40MHz) */
+  96      =1    RF_ID_MAX
+  97      =1  } eRF_ID;
+  98      =1  
+  99      =1  extern tsFlashApplTable code sFlashApplTable;
+ 100      =1  
+ 101      =1  /* Use default defined in Z-WAVE lib */
+ 102      =1  #define APP_DEFAULT_NORM_POWER  0xFF
+ 103      =1  /* Use default defined in Z-WAVE lib */
+ 104      =1  #define APP_DEFAULT_LOW_POWER   0xFF
+ 105      =1  /* Application RF const table offsets */
+ 106      =1  
+ 107      =1  #endif
+  19          
+  20          tsFlashApplTable code sFlashApplTable =
+  21          {
+  22            0xFF,                   /* BYTE dummy1;                                   */
+  23            0xFF,                   /* BYTE dummy2;                                   */
+  24            /* What should the power level be when in normal power TX mode */
+  25          #if defined (ZM5304) && defined (US)
+  31            APP_DEFAULT_NORM_POWER, /* BYTE FLASH_APPL_NORM_POWER_OFFS_0;   Channel 0 */
+  32            APP_DEFAULT_NORM_POWER, /* BYTE FLASH_APPL_NORM_POWER_OFFS_1;   Channel 1 */
+  33            APP_DEFAULT_NORM_POWER, /* BYTE FLASH_APPL_NORM_POWER_OFFS_2;   Channel 2 */
+  34          #endif
+  35            /* What should the power level be when in low power TX mode */
+  36            APP_DEFAULT_LOW_POWER,  /* BYTE FLASH_APPL_LOW_POWER_OFFS_0;    Channel 0 */
+  37            APP_DEFAULT_LOW_POWER,  /* BYTE FLASH_APPL_LOW_POWER_OFFS_1;    Channel 1 */
+  38            APP_DEFAULT_LOW_POWER   /* BYTE FLASH_APPL_LOW_POWER_OFFS_2;    Channel 2 */
+  39          };
+C51 COMPILER V9.54   APP_RFSETUP                                                           11/02/2021 02:44:03 PAGE 4   
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+C51 COMPILER V9.54   APP_RFSETUP                                                           11/02/2021 02:44:03 PAGE 5   
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+_FLASH_APPL_TABLE_ . . . . . . . . . .  * TAG *  -----  STRUCT   -----  8
+  dummy1 . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  dummy2 . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  FLASH_APPL_NORM_POWER_OFFS_0 . . . .  MEMBER   -----  U_CHAR   0002H  1
+  FLASH_APPL_NORM_POWER_OFFS_1 . . . .  MEMBER   -----  U_CHAR   0003H  1
+  FLASH_APPL_NORM_POWER_OFFS_2 . . . .  MEMBER   -----  U_CHAR   0004H  1
+  FLASH_APPL_LOW_POWER_OFFS_0. . . . .  MEMBER   -----  U_CHAR   0005H  1
+  FLASH_APPL_LOW_POWER_OFFS_1. . . . .  MEMBER   -----  U_CHAR   0006H  1
+  FLASH_APPL_LOW_POWER_OFFS_2. . . . .  MEMBER   -----  U_CHAR   0007H  1
+RF_CN. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_HK. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_IL. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_910. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_IN. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_JP_950. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_JP. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_906. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_870. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_EU. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_KR. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_882. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_866. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_886. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_878. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_MY. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_RU. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_US. . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_840_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_841_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_850_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_940_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_941_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_851_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_932_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_933_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_835_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_TF_836_3CH. . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_JP_32MHZ. . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+RF_ID_MAX. . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+tsFlashApplTable . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  8
+  dummy1 . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  dummy2 . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  FLASH_APPL_NORM_POWER_OFFS_0 . . . .  MEMBER   -----  U_CHAR   0002H  1
+  FLASH_APPL_NORM_POWER_OFFS_1 . . . .  MEMBER   -----  U_CHAR   0003H  1
+  FLASH_APPL_NORM_POWER_OFFS_2 . . . .  MEMBER   -----  U_CHAR   0004H  1
+  FLASH_APPL_LOW_POWER_OFFS_0. . . . .  MEMBER   -----  U_CHAR   0005H  1
+  FLASH_APPL_LOW_POWER_OFFS_1. . . . .  MEMBER   -----  U_CHAR   0006H  1
+  FLASH_APPL_LOW_POWER_OFFS_2. . . . .  MEMBER   -----  U_CHAR   0007H  1
+_RF_ID_ENUM_ . . . . . . . . . . . . .  * TAG *  -----  ENUM     -----  -----
+sFlashApplTable. . . . . . . . . . . .  PUBLIC   CODE   STRUCT   0000H  8
+RF_ANZ . . . . . . . . . . . . . . . .  E_CONST  -----  U_CHAR   -----  1
+eRF_ID . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =      8    ----
+   XDATA SIZE       =   ----    ----
+C51 COMPILER V9.54   APP_RFSETUP                                                           11/02/2021 02:44:03 PAGE 6   
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

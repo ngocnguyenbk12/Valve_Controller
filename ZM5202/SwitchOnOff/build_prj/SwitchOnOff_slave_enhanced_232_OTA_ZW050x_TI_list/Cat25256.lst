@@ -1,0 +1,358 @@
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE CAT25256
+OBJECT MODULE PLACED IN .\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\Cat25256.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\Valve_fucntion\Cat25256.c LARGE OBJECTADVANCED WARNINGLEVEL(1) OPTIMI
+                    -ZE(11,SIZE) BROWSE NOINTPROMOTE INTVECTOR(0X1800) INCDIR(..\..\Z-WAVE\INCLUDE;..\..\Z-WAVE\IO_DEFINES;.\BUILD_PRJ;.\BUIL
+                    -D_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI_RELS;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI;C:\KEIL
+                    -_V5\C51\INC;..\APPLICATIONUTILITIES;..\APPLICATIONCOMMANDHANDLERS;..\..\ZLIB\CMDCLASS;..\..\ZLIB\DEVTYPES;..\..\ZLIB\HAN
+                    -DLER;..\Valve_fucntion) DB OE NOCO SB LC CD DEFINE(BOOTLOADER_ENABLED,slave_enhanced_232,US,ZAF_BUILD_NO=52445,ZW_SECURI
+                    -TY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL,BANKING,
+                    -TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLED) DEBUG PRINT(.\build_prj\SwitchOnOff_slav
+                    -e_enhanced_232_OTA_ZW050x_TI_list\Cat25256.lst) TABS(2) OBJECT(.\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_
+                    -Rels\Cat25256.obj)
+
+line level    source
+
+   1          #include <Cat25256.h>
+   1      =1  //#include <ZW_spi_api.h>
+   2      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  34      =2  #define _ZW_TYPEDEFS_H_
+  35      =2  
+  36      =2  #ifndef __C51__
+  44      =2  
+  45      =2  /****************************************************************************/
+  46      =2  /*                              INCLUDE FILES                               */
+  47      =2  /****************************************************************************/
+  48      =2  
+  49      =2  /****************************************************************************/
+  50      =2  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  51      =2  /****************************************************************************/
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 2   
+
+  52      =2  #ifndef BYTE
+  53      =2  typedef unsigned char   BYTE;
+  54      =2  typedef unsigned short  WORD;
+  55      =2  typedef unsigned long   DWORD;
+  56      =2  
+  57      =2  #define IIBYTE BYTE idata  /* Internal indexed data byte */
+  58      =2  #define IBYTE  BYTE data   /* Internal data byte */
+  59      =2  #define IWORD  WORD data   /* Internal data word */
+  60      =2  #define IDWORD DWORD data  /* Internal data double word*/
+  61      =2  
+  62      =2  #define XBYTE  BYTE xdata  /* External data byte */
+  63      =2  #define XWORD  WORD xdata  /* External data word */
+  64      =2  #define XDWORD DWORD xdata /* External data double word */
+  65      =2  #define BBYTE  BYTE bdata  /* Internal bit adressable byte */
+  66      =2  
+  67      =2  #define PBYTE  XBYTE
+  68      =2  #define PWORD  XWORD
+  69      =2  #define PDWORD XDWORD
+  70      =2  
+  71      =2  #define BOOL   bit         /* Internal bit */
+  72      =2  
+  73      =2  #define CODE   code        /* Used for defining callback function which allways */
+  74      =2                             /* resides in code space. */
+  75      =2  
+  76      =2  typedef BYTE * BYTE_P;
+  77      =2  typedef WORD * WORD_P;
+  78      =2  typedef DWORD * DWORD_P;
+  79      =2  
+  80      =2  typedef struct
+  81      =2  {
+  82      =2    BYTE anything;
+  83      =2  } sSomeXDATA4K;
+  84      =2  typedef sSomeXDATA4K * XDATA4K_P;
+  85      =2  #endif
+  86      =2  
+  87      =2  #ifndef EOF
+  88      =2  #define EOF (-1)
+  89      =2  #endif
+  90      =2  
+  91      =2  #ifndef NULL
+  92      =2  #define NULL  (0)
+  93      =2  #endif
+  94      =2  
+  95      =2  #ifndef TRUE
+  96      =2  #define TRUE  (1)
+  97      =2  #define FALSE (0)
+  98      =2  #endif
+  99      =2  
+ 100      =2  /* Define for making easy and consistent callback definitions */
+ 101      =2  #define VOID_CALLBACKFUNC(completedFunc)  void (CODE *completedFunc)
+ 102      =2  
+ 103      =2  /* Remove memory specifier byte from generic pointer
+ 104      =2     See also: http://www.keil.com/forum/3443/ */
+ 105      =2  #ifdef __C51__
+ 106      =2  #define STRIP_GENERIC_PTR(p) ((unsigned) (void *) (p))
+ 107      =2  /* Macros to test generic pointers for NULL-ness, even if they
+ 108      =2  have been promoted from memory specific pointers */
+ 109      =2  #define IS_NULL(x)  (STRIP_GENERIC_PTR(x) == 0)
+ 110      =2  #define NON_NULL(x) (STRIP_GENERIC_PTR(x) != 0)
+ 111      =2  #else
+ 115      =2  
+ 116      =2  #define UNUSED(x) x = x; /* Hack to silence warning C280 Unreferenced local variable */
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 3   
+
+ 117      =2  #define UNUSED_CONST(x) if(x) ; /* Hack to silence warning C280 Unreferenced const variable */
+ 118      =2  
+ 119      =2  #define UIP_HTONL(x) x // C51 is big endian by default
+ 120      =2  
+ 121      =2  /****************************************************************************/
+ 122      =2  /*                                 MACROS                                   */
+ 123      =2  /****************************************************************************/
+ 124      =2  
+ 125      =2  /* offset of field m in a struct s */
+ 126      =2  #ifndef offsetof
+ 127      =2  #define offsetof(s,m)   (WORD)( (BYTE_P)&(((s *)0)->m) - (BYTE_P)0 )
+ 128      =2  #endif
+ 129      =2  
+ 130      =2  
+ 131      =2  #endif /* _ZW_TYPEDEFS_H_ */
+   3      =1  
+   4      =1  #define WREN 0x06  // enable write ope
+   5      =1  #define WRDI 0x04 // disable write ope
+   6      =1  #define RDSR 0x05 // read stt reg
+   7      =1  #define WRSR 0x01 // write stt reg
+   8      =1  #define READ 0x03 // read 
+   9      =1  #define WRITE 0x02  // write 
+  10      =1  
+  11      =1  void Cat25256_init(void);
+  12      =1  BYTE Cat25256_read(BYTE address1, BYTE Address2);
+  13      =1  void Cat25256_write(BYTE address1, BYTE Address2, BYTE Data);
+  14      =1  void Cat25256_reset(void);
+  15      =1  BYTE reg_status(void);
+  16      =1  void Cat25256_write_reg(BYTE reg_value);
+   2          //#include <ZW_spi_api.h>
+   3          #include <gpio_driver.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Offers functions for controlling GPIO.
+   4      =1   *
+   5      =1   * This driver includes pin swap because certain Z-Wave development
+   6      =1   * boards have pins which are swapped. This driver takes the pin swap into
+   7      =1   * account.
+   8      =1   *
+   9      =1   * The GPIO driver is dependent on function gpio_GetPinSwapList() which must be
+  10      =1   * placed in the application folder and implement an array of PIN_T type and
+  11      =1   * the function gpio_GetPinSwapList externally declared in the header file for
+  12      =1   * the GPIO driver. Function gpio_GetPinSwapList()is not called if function
+  13      =1   * gpio_driver_init() is initiated with automaticPinSwap = FALSE!
+  14      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+  15      =1   */
+  16      =1  
+  17      =1  #ifndef _GPIO_DRIVER_H_
+  18      =1  #define _GPIO_DRIVER_H_
+  19      =1  
+  20      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 4   
+
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  21      =1  
+  22      =1  typedef struct
+  23      =1  {
+  24      =1    BYTE pin;
+  25      =1    BYTE pinSwap;
+  26      =1  } PIN_T;
+  27      =1  
+  28      =1  typedef PIN_T PIN_T_ARRAY[];
+  29      =1  
+  30      =1  /**
+  31      =1   * @brief Gets the pin list and its size from the application.
+  32      =1   * @param[out] pPinList Pointer to an array containing the swapped pins.
+  33      =1   * @param[out] pPinListSize Pointer to the size of the pin list.
+  34      =1   */
+  35      =1  extern void
+  36      =1  gpio_GetPinSwapList(PIN_T_ARRAY xdata ** pPinList, BYTE * const pPinListSize);
+  37      =1  
+  38      =1  /**
+  39      =1   * @brief Initializes the GPIO driver by reading out pin swap value from NVM.
+  40      =1   * @param[in] automaticPinSwap Sets whether the GPIO driver should swap pins
+  41      =1   * automatically or not.
+  42      =1   * @return TRUE if initialized successfully, FALSE otherwise.
+  43      =1   */
+  44      =1  BOOL
+  45      =1  gpio_DriverInit(BOOL automaticPinSwap);
+  46      =1  
+  47      =1  /**
+  48      =1   * @brief Sets a pin as input.
+  49      =1   * @param[in] pin A given pin.
+  50      =1   * @param[in] fPullUp set pin to intern pull high or low
+  51      =1   */
+  52      =1  void gpio_SetPinIn(BYTE pin, BOOL fPullUp);
+  53      =1  
+  54      =1  /**
+  55      =1   * @brief Sets a given pin as output.
+  56      =1   * @param[in] pin A given pin.
+  57      =1   */
+  58      =1  void gpio_SetPinOut(BYTE pin);
+  59      =1  
+  60      =1  /**
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 5   
+
+  61      =1   * @brief Sets a given pin to a given state.
+  62      =1   * @param[in] pin A given pin.
+  63      =1   * @param[in] fValue TRUE for high, FALSE for low.
+  64      =1   */
+  65      =1  void gpio_SetPin(BYTE pin, BOOL fValue);
+  66      =1  
+  67      =1  /**
+  68      =1   * @brief Returns the state of a given pin.
+  69      =1   * @param[in] pin A given pin.
+  70      =1   * @return TRUE if high, FALSE if low.
+  71      =1   */
+  72      =1  BOOL gpio_GetPin(BYTE pin);
+  73      =1  
+  74      =1  /**
+  75      =1   * @brief Returns the state of a given pin as boolean.
+  76      =1   * @param pin A given pin.
+  77      =1   * @param pfState Pointer to result variable.
+  78      =1   * @return TRUE if pin port exists, FALSE otherwise.
+  79      =1   */
+  80      =1  BOOL gpio_GetPinBool(BYTE pin, BYTE * pfState);
+  81      =1  
+  82      =1  #endif /* _GPIO_DRIVER_H_ */
+  83      =1  
+   4          
+   5          
+   6          //void Cat25256_init(void){
+   7          //  ZW_SPI0_init(SPI_SPEED_8_MHZ|SPI_MODE_0|SPI_MSB_FIRST|SPI_MASTER);
+   8          //  ZW_SPI0_enable(TRUE);
+   9          //}
+  10          
+  11          //BYTE Cat25256_read(BYTE address){
+  12          //  BYTE data;
+  13          //  gpio_Setpin(spi_cs, FALSE);
+  14          //  ZW_SPI0_tx_set(READ);
+  15          //  ZW_SPI0_tx_set(address);
+  16          //  data = ZW_SPI0_rx_get();
+  17          //  gpio_Setpin(spi_cs, TRUE);
+  18          //  return data;
+  19          //}
+  20          
+  21          //void Cat25256_write(BYTE address, BYTE data){
+  22          //  gpio_SetPin(spi_cs, FALSE);
+  23          //  ZW_SPI0_tx_set(WRITE);
+  24          //  ZW_SPI0_tx_set(address);
+  25          //  ZW_SPI0_tx_set(data);
+  26          //  gpio_SetPin(spi_cs,TRUE);
+  27          
+  28          //}
+  29          
+  30          //  
+  31          
+  32          //void reg_status(void){
+  33          //  BYTE data;
+  34          //  gpio_SetPin(spi_cs, FALSE):
+  35          //  ZW_SPI0_tx_set(RDSR);
+  36          //  data = ZW_SPI0_rx_get();
+  37          //  return data;
+  38          //}
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 6   
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+C51 COMPILER V9.54   CAT25256                                                              12/14/2021 14:08:00 PAGE 7   
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+sSomeXDATA4K . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  1
+  anything . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+DWORD. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+PIN_T. . . . . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  2
+  pin. . . . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  pinSwap. . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+XDATA4K_P. . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+DWORD_P. . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+BYTE . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+WORD . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+BYTE_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+WORD_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+PIN_T_ARRAY. . . . . . . . . . . . . .  TYPEDEF  -----  ARRAY    -----  -----
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

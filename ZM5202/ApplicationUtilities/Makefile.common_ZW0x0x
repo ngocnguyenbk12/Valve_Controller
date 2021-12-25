@@ -1,0 +1,721 @@
+#****************************************************************************
+#
+#  Copyright (c) 2001-2014
+#  Sigma Designs, Inc.
+#  All Rights Reserved
+#
+#---------------------------------------------------------------------------
+#
+#  Description: Common make file for all ZW0x0x applications
+#
+#  Author:   Samer Seoud
+#
+#  Last Changed By:  $Author: tro $
+#  Revision:         $Revision: 31885 $
+#  Last Changed:     $Date: 2015-09-21 13:16:55 +0200 (ma, 21 sep 2015) $
+#
+#****************************************************************************
+
+#DEBUGACTIONS=@echo Building $@ because of $? ($(MAKECMDGOALS) $(MAKELEVEL))
+
+ifeq ($(SECURITY_INCLUDED),yes)
+
+# Security included in protocol
+ifeq ($(findstring controller,$(LIBRARY)),)
+
+# Slave.... (slave_enhanced_232) target
+ifeq ($(SEC2LIBROOT),)
+SEC2_LIBFILE:=$(ZWLIBROOT)\lib\libs2\LIBS2_SLAVE.LIB
+else
+SEC2_LIBFILE:=$(SEC2LIBROOT)\LIBS2_SLAVE.LIB
+endif
+
+else
+
+# Controller target
+ifeq ($(SEC2LIBROOT),)
+SEC2_LIBFILE:=$(ZWLIBROOT)\lib\libs2\LIBS2_CONTROLLER.LIB
+else
+SEC2_LIBFILE:=$(SEC2LIBROOT)\LIBS2_CONTROLLER.LIB
+endif
+
+endif
+
+ifeq ($(SEC2LIBROOT),)
+SEC2_CCMLIBFILE=$(ZWLIBROOT)\lib\libs2\LIBS2CRYPTO.LIB
+else
+SEC2_CCMLIBFILE=$(SEC2LIBROOT)\LIBS2CRYPTO.LIB
+endif
+
+else
+
+# NO Security in protocol
+SEC2_LIBFILE:=
+SEC2_CCMLIBFILE=
+
+endif
+
+
+###############
+# Directories #
+###############
+C51INC:=$(C51INC),$(ZWLIBROOT)\\IO_defines
+FIXBOOTCRC:=$(TOOLSDIR)\\fixbootcrc\\fixbootcrc.exe
+SREC=$(subst \,\\,$(TOOLSDIR)\HexTools\srec_cat.exe)
+
+ifeq ($(CHIP),ZW050x)
+CHIPFULL=ZW0501
+CHIPNUMBER=050x
+endif
+
+###############
+# Files       #
+###############
+ifeq "$(3CH)" "YES"
+CH3_NAME:=_3CH
+else
+CH3_NAME:=
+endif
+
+ifeq ($(DUT_TYPE),)
+DUT_NAME:=
+else
+DUT_NAME:=_zen
+endif
+
+# Z-Wave library file (if any)
+ifneq ($(ZW_LIBRARY),nolib)
+LIBFILE=$(ZWLIBROOT)\lib\$(LIB)$(DUT_NAME)_$(CHIP)$(CH3_NAME)\ZW_$(LIB)$(DUT_NAME)_$(CHIP)$(CH3_NAME).lib
+endif
+
+ifeq ($(BOOTLOADER),)
+RF_FREQ_FILE=$(ZWLIBROOT)\lib\rf_Freq\ZW_rf_$(CHIPNUMBER)_$(RF).obj
+INIT_VARS_FILE=$(ZWLIBROOT)\lib\init_vars\init_vars.obj
+endif
+
+ifneq ($(LIB),slave_routing)
+ifeq ($(NVM_TYPE),)
+EXT_NVM_FILE:=
+else
+EXT_NVM_FILE:=$(ZWLIBROOT)\lib\ext_nvm\ZW_$(NVM_TYPE)_if.obj
+endif
+endif
+
+
+#----------------------------------------------------------------------------
+######################################################
+# Compiler options. Specific for the library in use. #
+######################################################
+
+ifeq "$(LIB)" "nolib"
+COMDEFINES:=\
+ $(CHIP),\
+ $(CHIPFULL)
+endif
+
+ifeq "$(LIB)" "micro_rf_linkX"
+COMDEFINES:=\
+ $(CHIP),\
+ $(CHIPFULL)
+endif
+
+ifeq "$(LIB)" "AVRemote"
+COMDEFINES:=ZW_AVREMOTE,\
+	    $(CHIP),\
+	    $(CHIPFULL)
+endif
+
+ifeq "$(LIB)" "controller_bridge"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_CONTROLLER_STATIC,\
+	    ZW_CONTROLLER_BRIDGE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    ZW_PROMISCUOUS_MODE
+endif
+
+ifeq "$(LIB)" "controller_dev"
+COMDEFINES:=ZW_CONTROLLER,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    $(TARGET_MODE),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "controller_portable"
+COMDEFINES:=ZW_CONTROLLER,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO,\
+	    ZW_PROMISCUOUS_MODE
+endif
+
+ifeq "$(LIB)" "controller_static"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_CONTROLLER_STATIC,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    ZW_PROMISCUOUS_MODE
+endif
+
+ifeq "$(LIB)" "controller_static_norep"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_CONTROLLER_STATIC,\
+	    ZW_CONTROLLER_STATIC_NOREP,\
+	    $(CHIP),\
+	    $(CHIPFULL)
+endif
+
+ifeq "$(LIB)" "controller_static_nosuc"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_CONTROLLER_STATIC,\
+	    ZW_CONTROLLER_STATIC_NOSUC,\
+	    $(CHIP),\
+	    $(CHIPFULL)
+endif
+
+ifeq "$(LIB)" "controller_static_nosuc_norep"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_CONTROLLER_STATIC,\
+	    ZW_CONTROLLER_STATIC_NOSUC,\
+	    $(CHIP),\
+	    $(CHIPFULL)
+endif
+
+ifeq "$(LIB)" "controller_static_single"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_CONTROLLER_STATIC,\
+	    ZW_CONTROLLER_SINGLE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "controller_installer"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_INSTALLER,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO,\
+	    ZW_PROMISCUOUS_MODE
+endif
+
+ifeq "$(LIB)" "controller_routing"
+COMDEFINES:=ZW_CONTROLLER,\
+	    ZW_INSTALLER,\
+	    ZW_ROUTING_DEMO,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "controller_routing"
+COMDEFINES:=ZW_SLAVE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    $(TARGET_MODE),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave"
+COMDEFINES:=ZW_SLAVE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave_dev"
+COMDEFINES:=ZW_SLAVE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    $(TARGET_MODE),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave_enhanced"
+COMDEFINES:=ZW_SLAVE,\
+	    ZW_SLAVE_32,\
+	    ZW_SLAVE_ROUTING,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO,\
+	    ZW_SELF_HEAL
+endif
+
+ifeq "$(LIB)" "slave_enhanced_232"
+COMDEFINES:=ZW_SLAVE,\
+	    ZW_SLAVE_32,\
+	    ZW_SLAVE_ENHANCED_232,\
+	    ZW_SLAVE_ROUTING,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO,\
+	    ZW_SELF_HEAL
+endif
+
+ifeq "$(LIB)" "slave_enhanced_232_timing"
+COMDEFINES:=ZW_SLAVE,\
+	    ZW_SLAVE_32,\
+	    ZW_SLAVE_ENHANCED_232,\
+	    ZW_SLAVE_ROUTING,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO,\
+	    ZW_SELF_HEAL
+endif
+
+ifeq "$(LIB)" "slave_otp"
+COMDEFINES:=ZW_SLAVE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave_prodtest_dut"
+COMDEFINES:=ZW_SLAVE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave_prodtest_gen"
+COMDEFINES:=ZW_SLAVE,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave_routing"
+COMDEFINES:=ZW_SLAVE,\
+	    ZW_SLAVE_ROUTING,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+ifeq "$(LIB)" "slave_sensor"
+COMDEFINES:=ZW_SLAVE,\
+	    ZW_SLAVE_ROUTING,\
+	    ZW_SLAVE_SENSOR,\
+	    $(CHIP),\
+	    $(CHIPFULL),\
+	    NEW_NODEINFO
+endif
+
+
+#----------------------------------------------------------------------------
+
+ifeq "$(3CH)" "YES"
+COMDEFINES+=,\
+	ZW_3CH_SYSTEM
+endif
+
+ifneq ($(BOOTLOADER),)
+# Bootloader do not use banking
+CODE_MEMORY_MODE:=nonbanking
+endif
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+COMDEFINES+=,\
+ BANKING
+endif
+
+ifneq ($(CDEFINES),)
+CDEFINES+=,
+endif
+CDEFINES+=\
+ $(COMDEFINES)
+
+ifneq ($(ADEFINES),)
+ADEFINES+=,
+endif
+ADEFINES+=\
+ $(COMDEFINES)
+
+##############
+# File lists #
+##############
+
+# If a local App_RFSetup.c file exists in the application directory, select this special RF power setting file
+# different from the default one in the library.
+APP_RFSETUP_FILE_EXISTS := $(shell if exist App_RFSetup.c echo TRUE)
+ifeq ($(APP_RFSETUP_FILE_EXISTS),TRUE)
+APP_RFSETUP_FILE:=App_RFSetup.obj
+endif
+
+ifneq ($(BOOTLOADER),)
+RELFILES+=\
+ ZW_bootloader_descriptor.obj
+else
+ifeq ($(CODE_MEMORY_MODE),banking)
+COMMON_RELFILES+=\
+ ZW_app_version.obj\
+ ZW_firmware_descriptor_addr.obj\
+ ZW_firmware_descriptor.obj
+endif
+RELFILES+=\
+ ZW_app_version.obj\
+ ZW_firmware_descriptor_addr.obj\
+ ZW_firmware_descriptor.obj
+endif
+
+# Header dependency files
+ifneq ($(UVISIONPREBUILD),) # If part of uVision build, do not use dependency files. uVision has it's own way to handle this.
+else
+ifneq ($(UVISIONPOSTBUILD),) # If part of uVision build, do not use dependency files. uVision has it's own way to handle this.
+else
+DEPENDFILES=Makefile.d
+endif
+endif
+
+# List of all relfiles including those preloaded for some special handling
+#  used by "makedepend", "uVisionProjectGenerator" and "Understand C++"
+RELFILESINCLUDINGPRELOADED=$(APP_RFSETUP_FILE) $(RELFILES)
+
+# Files containing full path for source files. Used for input to "makedepend" and "Understand C++"
+CSRCFILENAMEFILES=$(RELFILESINCLUDINGPRELOADED:.obj=.csrc)
+
+# Relocatable files with complete path
+
+empty:=
+SPACE:= $(empty) $(empty)
+COMMA:= ,
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+COMMON_RELFILESpath:=$(subst $(SPACE),$(COMMA),$(foreach file, $(COMMON_RELFILES),$(RELSDIR)\$(file)))
+BANK1_RELFILESpath:=$(subst $(SPACE),$(COMMA),$(foreach file, $(BANK1_RELFILES),$(RELSDIR)\$(file)))
+BANK2_RELFILESpath:=$(subst $(SPACE),$(COMMA),$(foreach file, $(BANK2_RELFILES),$(RELSDIR)\$(file)))
+BANK3_RELFILESpath:=$(subst $(SPACE),$(COMMA),$(foreach file, $(BANK3_RELFILES),$(RELSDIR)\$(file)))
+endif
+
+RELFILESpath:=$(subst $(SPACE),$(COMMA),$(foreach file, $(RELFILES),$(RELSDIR)\$(file)))
+
+# Header dependency files with complete path
+DEPENDFILESpath = $(foreach file,$(DEPENDFILES),$(RELSDIR)\$(file))
+
+#########
+# Rules #
+#########
+
+# If the goal is "depend" the files listed in the DEPENDFILES variable
+# should be build.
+depend: $(TARGETDIR) $(RELSDIR) $(LISTDIR) $(DEPENDFILES) $(SEGMENTEND_DEPENDENCIES)
+
+Makefile.d: $(CSRCFILENAMEFILES)
+	@echo @echo off ^& setlocal enableextensions enabledelayedexpansion > $(RELSDIR)\domakedepend.bat
+	@echo set INC=%%KEILPATH%%\INC>> $(RELSDIR)\domakedepend.bat
+	@echo -I$(C51INC)| $(SED) "s/ *, */ -I/g" | $(SED) -e "s~\(.*\)~set DEP_INCLUDEDIRS=-I. \1~" - >> $(RELSDIR)\domakedepend.bat
+	@echo -D__C51__, $(CDEFINES)| $(SED) "s/ *, */ -D/g" | $(SED) -e "s~\(.*\)~set DEP_CDEFINES=\1~" - >> $(RELSDIR)\domakedepend.bat
+	@findstr /E /I ".c .a51" $(RELSDIR)\*.csrc | $(SED) -r -e "s/^.*\.csrc://g" | $(SED) -e :a -e "/$$/N;s/\n/ /;ta" | $(SED) -e "s~\(.*\)~set SRCS=\1~" - >> $(RELSDIR)\domakedepend.bat
+	@echo $(MAKEDEPEND)  %%DEP_INCLUDEDIRS%% -o.obj -f- %%DEP_CDEFINES%% %%SRCS%% ^> $(subst \,\\,$(RELSDIR)\Makefile.d) >> $(RELSDIR)\domakedepend.bat
+	@$(subst \,\\,$(RELSDIR)\domakedepend.bat)
+	@del $(RELSDIR)\domakedepend.bat
+
+ifneq ($(UVISIONPREBUILD),) # If part of uVision build, do not use dependency files. uVision has it's own way to handle this.
+else
+ifneq ($(UVISIONPOSTBUILD),) # If part of uVision build, do not use dependency files. uVision has it's own way to handle this.
+else
+# The header dependency files are not prerequisites for the
+# "depend" and "clean" goals.
+ifeq ($(filter depend,$(MAKECMDGOALS)),)
+  ifeq ($(filter clean,$(MAKECMDGOALS)),)
+    include $(RELSDIR)/*.d
+  endif
+endif
+endif
+endif # ifneq ($(UVISIONPOSTBUILD),)
+
+#------------------------------------
+# Compile and create library files
+#------------------------------------
+
+ifeq ($(CODE_MEMORY_MODE),banking)
+
+ifneq "$(LIB)" "nolib"
+
+ifeq ($(filter nolib micro_rf_linkX,$(ZW_LIBRARY)),)
+# Add List of ZW_library modules, which always needto be forced into COMMON bank
+
+ifneq ($(COMMON_ZWLIB_MODULES),)
+
+COMMON_ZWLIB_MODULES:=ZW_VERSION,$(COMMON_ZWLIB_MODULES)
+
+else #/* ifneq ($(COMMON_ZWLIB_MODULES),) */
+
+COMMON_ZWLIB_MODULES:=ZW_VERSION
+
+endif #/* ifneq ($(COMMON_ZWLIB_MODULES),) */
+endif #/* ifeq ($(filter nolib micro_rf_linkX,$(ZW_LIBRARY)),) */
+
+ifeq ($(BOOTLOADER),)
+ifeq ($(BOOTLOADER_ENABLED),)
+ifneq ($(COMMON_ZWLIB_MODULES),)
+COMMON_ZWLIB_MODULES:=?C_INTVECTOR_TABLE,$(COMMON_ZWLIB_MODULES)
+else #/* ifneq ($(COMMON_ZWLIB_MODULES),) */
+COMMON_ZWLIB_MODULES:=?C_INTVECTOR_TABLE
+endif #/* ifneq ($(COMMON_ZWLIB_MODULES),) */
+endif
+endif
+
+# 1. Read library modules forced into a specific bank first.
+# 2. Then, read the application modules.
+# 3. And at last read the rest of the libraries
+# If there is no COMMON_ZWLIB_MODULES forced into COMMON, then nearly everything from the
+# ZW_LIBRARY will be put into BANK1 by the following "$(LIBFILE) ($(BANK1_ZWLIB_MODULES))".
+# There must be at least one module forced into COMMON by "$(LIBFILE) ($(COMMON_ZWLIB_MODULES))".
+# The module(s) forced into COMMON must not reference too much other things from ZW_LIBRARY,
+# else nearly everything will be forced into COMMON. I.e. a very simple module is a good one here.
+# ?C_STARTUP module (in ZW_startup.a51) references ?BANK?INIT (in ZW_nobank_init.a51), which will
+# conflict with ?BANK?SWITCHING (in ZW_L51_BANK.a51).
+#
+ifneq ($(COMMON_ZWLIB_MODULES),)
+LINKER_SRC_FILES:=\
+ COMMON {
+# If we shall build with a special RF power settings, then make sure special App_RFSetup is linked in before any modules from the library,
+# because it shall replace the corresponding module in the library.
+ ifneq ($(APP_RFSETUP_FILE),)
+  LINKER_SRC_FILES+=$(RELSDIR)\$(APP_RFSETUP_FILE),
+ endif
+# If we shall build with a special NVM driver, then make sure it is linked in before any modules from the library,
+# because it shall replace the corresponding module in the library.
+ ifneq ($(EXT_NVM_FILE),)
+  LINKER_SRC_FILES+=$(EXT_NVM_FILE),
+ endif
+ifneq ($(SEC2_LIBFILE),)
+LINKER_SRC_FILES+=\
+  $(SEC2_LIBFILE) (S2_INCLUSION_JOINING_NODE),
+endif
+#ifneq ($(SEC2_CCMLIBFILE),)
+#LINKER_SRC_FILES+=\
+#  $(SEC2_CCMLIBFILE) (KDERIV),
+#endif
+LINKER_SRC_FILES+=$(LIBFILE) ($(COMMON_ZWLIB_MODULES))\
+ }
+endif
+ifneq ($(BANK1_ZWLIB_MODULES),)
+ ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+ endif
+LINKER_SRC_FILES+=\
+ BANK1 {\
+  $(LIBFILE) ($(BANK1_ZWLIB_MODULES))
+ifneq ($(SEC2_CCMLIBFILE),)
+LINKER_SRC_FILES+=\
+  , $(SEC2_CCMLIBFILE) (CCM, AES_CMAC, CTR_DRBG, KDERIV, NEXTNONCE, CURVE25519, BIGINT)
+endif
+ifneq ($(SEC2_LIBFILE),)
+ifneq ($(USE_TRANSPORT_SERVICE),)
+LINKER_SRC_FILES+=\
+  , $(SEC2_LIBFILE) (TRANSPORT2_FSM)
+endif
+endif
+LINKER_SRC_FILES+=\
+ }
+endif
+ifneq ($(BANK2_ZWLIB_MODULES),)
+ ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+ endif
+LINKER_SRC_FILES+=\
+ BANK2 {\
+  $(LIBFILE) ($(BANK2_ZWLIB_MODULES))\
+ }
+endif
+ifneq ($(BANK3_ZWLIB_MODULES),)
+ ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+ endif
+LINKER_SRC_FILES+=\
+ BANK3 {\
+  $(LIBFILE) ($(BANK3_ZWLIB_MODULES))
+ifneq ($(SEC2_LIBFILE),)
+ifneq ($(USE_TRANSPORT_SERVICE),)
+LINKER_SRC_FILES+=\
+  , $(SEC2_LIBFILE) (S2, TRANSPORT_SERVICE2)
+else
+LINKER_SRC_FILES+=\
+  , $(SEC2_LIBFILE) (S2)
+endif # ifneq ($(USE_TRANSPORT_SERVICE),)
+endif
+ifneq ($(SEC2_CCMLIBFILE),)
+LINKER_SRC_FILES+=\
+  , $(SEC2_CCMLIBFILE) (FE25519)
+endif
+LINKER_SRC_FILES+=\
+ }
+endif
+endif # ifneq "$(LIB)" "nolib"
+ifneq ($(BANK1_RELFILES),)
+ ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+ endif
+LINKER_SRC_FILES+=\
+ BANK1 {\
+  $(BANK1_RELFILESpath)\
+ }
+endif
+ifneq ($(BANK2_RELFILES),)
+ ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+ endif
+LINKER_SRC_FILES+=\
+ BANK2 {\
+  $(BANK2_RELFILESpath)\
+ }
+endif
+ifneq ($(BANK3_RELFILES),)
+ ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+ endif
+LINKER_SRC_FILES+=\
+ BANK3 {\
+  $(BANK3_RELFILESpath)\
+ }
+endif
+ifneq ($(LINKER_SRC_FILES),)
+LINKER_SRC_FILES+=,
+endif
+LINKER_SRC_FILES+=\
+ COMMON {\
+  $(COMMON_RELFILESpath),
+ ifneq ($(LIBFILE),)
+LINKER_SRC_FILES+=\
+  $(LIBFILE) (?C_STARTUP),
+ endif
+LINKER_SRC_FILES+=\
+  $(C51LIB)\C51FPL.LIB
+ ifneq ($(INIT_VARS_FILE),)
+LINKER_SRC_FILES+=\
+  ,$(INIT_VARS_FILE)
+ endif
+ ifneq ($(RF_FREQ_FILE),)
+LINKER_SRC_FILES+=\
+  ,$(RF_FREQ_FILE)
+ endif
+LINKER_SRC_FILES+=\
+ }
+
+else #/* ifeq ($(CODE_MEMORY_MODE),banking) */
+
+ifneq ($(BOOTLOADER),)
+ifneq ($(EXT_NVM_FILE),)
+LINKER_SRC_FILES+=$(EXT_NVM_FILE),
+endif
+ifneq ($(COMMON_ZWLIB_MODULES),)
+LINKER_SRC_FILES+=$(ZWLIBROOT)\lib\bootloader_$(CHIP)\ZW_bootloader_$(CHIP).lib (?C_BOOTSTARTUP),($(COMMON_ZWLIB_MODULES))
+else
+LINKER_SRC_FILES+=$(ZWLIBROOT)\lib\bootloader_$(CHIP)\ZW_bootloader_$(CHIP).lib (?C_BOOTSTARTUP)
+endif
+
+else #/* ifneq ($(BOOTLOADER),) */
+
+ LINKER_SRC_FILES=$(RELFILESpath)
+ ifneq ($(RF_FREQ_FILE),)
+  LINKER_SRC_FILES+=,$(RF_FREQ_FILE)
+ endif
+ ifneq ($(EXT_NVM_FILE),)
+  LINKER_SRC_FILES+=,$(EXT_NVM_FILE)
+ endif
+
+ifneq ($(LIBFILE),)
+ LINKER_SRC_FILES+=,$(LIBFILE)
+ LINKER_SRC_FILES+= (?C_STARTUP,?C_INTVECTOR_TABLE
+ LINKER_SRC_FILES+=)
+endif
+
+#ifneq ($(LIBFILE),) TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ LINKER_SRC_FILES+=,
+#endif
+ifeq ($(CHIP),ZW050x)
+LINKER_SRC_FILES+=$(C51LIB)\C51FPL.LIB
+endif
+
+LINKER_SRC_FILES+=,$(INIT_VARS_FILE)
+
+endif #/* ifneq ($(BOOTLOADER),) */
+
+endif #/* ifeq ($(CODE_MEMORY_MODE),banking) */
+
+LINKER_SRC_FILES+=,$(C51LIB)\C51L.LIB
+
+# The Flash hexfile is build from the RELFILES plus the ZW_slave library - first we make an AOF file.
+ifeq ($(AOFFILE),)
+$(RELSDIR)\$(TARGET).AOF: $(APP_RFSETUP_FILE) $(RELFILES) $(RF_FREQ_FILE) $(EXT_NVM_FILE) $(INIT_VARS_FILE) $(LIBFILE)
+else
+$(RELSDIR)\$(TARGET).AOF : $(AOFFILE) $(RELFILES) $(LIBFILE)
+endif
+	$(DEBUGACTIONS)
+	@$(DONOTMAKEPENDINGLINKING) echo $(LINKER_SRC_FILES) TO $(RELSDIR)\$(TARGET).AOF > $(RELSDIR)\$(TARGET).inp
+	@$(DONOTMAKEPENDINGLINKING) echo $(LFLAGS) >> $(RELSDIR)\$(TARGET).inp
+	@$(DONOTMAKEPENDINGLINKING) $(LN) @$(subst \,\\,$(RELSDIR)\)$(TARGET).inp
+	@$(DONOTMAKEPENDINGLINKING) rename $@ $(notdir $(subst \,/,$@.case))
+	@$(DONOTMAKEPENDINGLINKING) rename $@.case $(notdir $(subst \,/,$@))
+	@$(DONOTMAKEPENDINGLINKING) del $(RELSDIR)\$(TARGET).inp
+
+# How to convert to HEX-file
+
+HEXOPTIONS:=H386 MERGE32K
+
+# Normally BOOTLOADERCHIPPACK has not been assigned yet. Then use the same value as CHIP (allways ZW050x)
+# For some production targets an allternative bootloader is needed: Then assign your special value to BOOTLOADERCHIPPACK
+# somewhere in your applications Makefile to override this default value.
+ifeq ($(BOOTLOADERCHIPPACK),)
+BOOTLOADERCHIPPACK:=$(CHIP)
+endif
+
+# The Flash hexfile is made from the AOF file
+# When  this command line gets too long:
+# @$(HEX) $(subst \,\\,$(RELSDIR)\$(TARGET).AOF) HEXFILE($(subst \,\\,$(TARGETDIR)\$(TARGET).hex))
+# the ohx51 program ends up in a strange error. Therefore we make a script instead, cd'ing to the target
+# directory, and make the conversion from there with a shorter command line.
+$(TARGETHEXFILE): $(RELSDIR)\$(TARGET).AOF
+	$(DEBUGACTIONS)
+	@$(HEX) $(subst \,\\,$(RELSDIR)\$(TARGET).AOF) $(HEXOPTIONS) RANGE(0X00000000-0XFFFFFFFF) HEXFILE($(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILE)))
+ifneq ($(BOOTLOADER_ENABLED),)
+	@$(FIXBOOTCRC) 0 $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILE)) > $(TARGETDIR)\$(TARGET)_Bank_usage.txt
+	@type $(TARGETDIR)\$(TARGET)_Bank_usage.txt
+	@if exist $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILE)) del $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILE))
+	@rename $(subst \,\\,$(TARGETDIR)\$(TARGET)-crc.hex) $(TARGETHEXFILE)
+endif
+ifneq ($(DELETE_INTERMEDIATES),)
+	echo "Cleaning up intermediate files"
+	del /q /s *.obj *.aof *.lst >nul
+endif
+
+ifneq ($(BOOTLOADER_ENABLED),)
+$(TARGETHEXFILEWITHBOOTLOADER): $(ZWLIBROOT)\lib\bootloader_$(BOOTLOADERCHIPPACK)\bootloader_$(BOOTLOADERCHIPPACK).hex $(TARGETHEXFILE)
+	@if exist $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILEWITHBOOTLOADER)) del $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILEWITHBOOTLOADER))
+	@$(SREC) $(subst \,\\,$(ZWLIBROOT)\lib\bootloader_$(BOOTLOADERCHIPPACK)\bootloader_$(BOOTLOADERCHIPPACK).hex) -Intel $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILE)) -Intel -Output $(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILEWITHBOOTLOADER)) -Intel -address-length=3 -DO -Line_Length 44
+	@echo :00000001FF>>$(subst \,\\,$(TARGETDIR)\$(TARGETHEXFILEWITHBOOTLOADER))
+
+OTACOMPRESS:=$(ZWLIBROOT)\lib\otacompress\otacompress.exe
+
+endif
+
+BOOTLOADER_SIZE:=$(INT_VEC)
+
+# $(TARGET).otz depends on $(TARGETDIR)\$(TARGET).otz
+$(TARGETCOMPRESSEDHEXFILE) : $(TARGETDIR)\$(TARGETCOMPRESSEDHEXFILE) ;
+
+# The compressed OTA file (.otz) are intel hex encoded from the binary compressed .bin.lz1 file
+# Delete the intermediate files after creating .otz
+$(TARGETDIR)\$(TARGETCOMPRESSEDHEXFILE) : $(TARGETDIR)\$(TARGETHEXFILE).bin.lz1
+	$(SREC)  $< -binary -o $@ -intel -line-length=43
+	@del $(TARGETDIR)\$(TARGETHEXFILE).bin.lz1
+	@del $(TARGETDIR)\$(TARGETHEXFILE).bin
+	@del $(TARGETDIR)\$(TARGETHEXFILE)
+
+# Compressed .lz1 files are created from the binary .ota files
+$(TARGETDIR)\$(TARGETHEXFILE).bin.lz1 : $(TARGETDIR)\$(TARGETHEXFILE).bin 
+	$(OTACOMPRESS) $< $@
+
+# How to convert an intel hex encoded .ota file to binary before compression.
+# We exclude the bootloader part of the .OTA file which is all-zeros anyway.
+# With the compressed bootloader, we only compress and transfer the non-bootloader
+# code.
+$(TARGETDIR)\$(TARGETHEXFILE).bin : $(TARGETDIR)\$(TARGETHEXFILE)
+	$(SREC) $< -intel -exclude 0x0 $(BOOTLOADER_SIZE) -offset -$(BOOTLOADER_SIZE) -o $@ -binary
+
+# Translate to Explicit Path Method for target. Other parts of makefile system
+# uses non-explicit target paths. This target converts between them.
+$(TARGETDIR)\$(TARGETHEXFILE) : $(TARGETHEXFILEWITHBOOTLOADER) ;

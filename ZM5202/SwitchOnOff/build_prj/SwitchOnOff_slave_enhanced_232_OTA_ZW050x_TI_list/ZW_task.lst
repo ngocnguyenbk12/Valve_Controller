@@ -1,0 +1,1772 @@
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE ZW_TASK
+OBJECT MODULE PLACED IN .\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_task.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\APPLICATIONUTILITIES\ZW_TASK.C LARGE OBJECTADVANCED WARNINGLEVEL(1) O
+                    -PTIMIZE(11,SIZE) BROWSE NOINTPROMOTE INTVECTOR(0X1800) INCDIR(..\..\Z-WAVE\INCLUDE;..\..\Z-WAVE\IO_DEFINES;.\BUILD_PRJ;.
+                    -\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI_RELS;.\BUILD_PRJ\SWITCHONOFF_SLAVE_ENHANCED_232_OTA_ZW050X_TI;C:
+                    -\KEIL_V5\C51\INC;..\APPLICATIONUTILITIES;..\APPLICATIONCOMMANDHANDLERS;..\..\ZLIB\CMDCLASS;..\..\ZLIB\DEVTYPES;..\..\ZLI
+                    -B\HANDLER;..\Valve_fucntion) DB OE NOCO SB LC CD DEFINE(BOOTLOADER_ENABLED,slave_enhanced_232,US,ZAF_BUILD_NO=52445,ZW_S
+                    -ECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,NEW_NODEINFO,ZW_SELF_HEAL,BAN
+                    -KING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLED,BOOTLOADER_ENABLED,slave_enhanced_23
+                    -2,US,ZAF_BUILD_NO=52445,ZW_SECURITY_PROTOCOL,ZW_SLAVE,ZW_SLAVE_32,ZW_SLAVE_ENHANCED_232,ZW_SLAVE_ROUTING,ZW050x,ZW0501,N
+                    -EW_NODEINFO,ZW_SELF_HEAL,BANKING,TEST_INTERFACE_SUPPORT,ZW_TEST_INTERFACE_DRIVER,NON_BATT,ZW_SMARTSTART_ENABLED) DEBUG P
+                    -RINT(.\build_prj\SwitchOnOff_slave_enhanced_232_OTA_ZW050x_TI_list\ZW_task.lst) TABS(2) OBJECT(.\build_prj\SwitchOnOff_s
+                    -lave_enhanced_232_OTA_ZW050x_TI_Rels\ZW_task.obj)
+
+line level    source
+
+   1          /***************************************************************************
+   2          *
+   3          * Copyright (c) 2001-2015
+   4          * Sigma Designs, Inc.
+   5          * All Rights Reserved
+   6          *
+   7          *---------------------------------------------------------------------------
+   8          *
+   9          * Description: Task pool handler
+  10          *
+  11          * Author: Thomas Roll
+  12          *
+  13          * Last Changed By: $Author: tro $
+  14          * Revision: $Revision: 0.00 $
+  15          * Last Changed: $Date: 2015/03/02 14:27:01 $
+  16          *
+  17          ****************************************************************************/
+  18          
+  19          /****************************************************************************/
+  20          /*                              INCLUDE FILES                               */
+  21          /****************************************************************************/
+  22          
+  23          #include <ZW_stdint.h>
+   1      =1  /*
+   2      =1   * ZW_stdint.h
+   3      =1   *
+   4      =1   * Define integer types by their conventional POSIX names [1].
+   5      =1   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =1   *
+   7      =1   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =1   *
+   9      =1   *  Created on: 18/01/2013
+  10      =1   *      Author: jbu
+  11      =1   */
+  12      =1  #ifndef ZW_STDINT_H_
+  13      =1  #define ZW_STDINT_H_
+  14      =1  
+  15      =1  #ifdef __GNUC__
+  18      =1  
+  19      =1  #ifndef _STDINT_H // yield to "proper" stdint
+  20      =1  #define _STDINT_H
+  21      =1  
+  22      =1  typedef unsigned char uint8_t;
+  23      =1  typedef unsigned short uint16_t;
+  24      =1  
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 2   
+
+  25      =1  /* These are needed to satisfy Yakindu*/
+  26      =1  #ifndef __GNUC__
+  27      =1  typedef signed short int_fast16_t;
+  28      =1  typedef unsigned short uint_fast16_t;
+  29      =1  #endif
+  30      =1  #ifdef __C51__
+  31      =1  typedef signed long int32_t;
+  32      =1  typedef unsigned long uint32_t;
+  33      =1  typedef int32_t  *intptr_t;
+  34      =1  #endif
+  35      =1  typedef unsigned char bool;
+  36      =1  //   typedef unsigned __int64  uintptr_t;
+  37      =1  //#else // _WIN64 ][
+  38      =1  //   typedef _W64 signed int   intptr_t;
+  39      =1  //   typedef _W64 unsigned int uintptr_t;
+  40      =1  #define true (1)
+  41      =1  #define false (0)
+  42      =1  
+  43      =1  #endif /*#ifndef _STDINT_H*/
+  44      =1  
+  45      =1  /* These are actually not POSIX, but from contiki */
+  46      =1  typedef uint8_t u8_t;
+  47      =1  typedef uint16_t u16_t;
+  48      =1  
+  49      =1  #endif /* ZW_STDINT_H_ */
+  24          #include <ZW_typedefs.h>
+   1      =1  /*******************************  ZW_typedefs.h  *******************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Products that speak Z-Wave work together better
+  11      =1   *
+  12      =1   *              Copyright (c) 2008
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Module description
+  25      =1   *
+  26      =1   * Author:   Ivar Jeppesen
+  27      =1   *
+  28      =1   * Last Changed By:  $Author: efh $
+  29      =1   * Revision:         $Revision: 29359 $
+  30      =1   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =1   *
+  32      =1   ****************************************************************************/
+  33      =1  #ifndef _ZW_TYPEDEFS_H_
+  34      =1  #define _ZW_TYPEDEFS_H_
+  35      =1  
+  36      =1  #ifndef __C51__
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 3   
+
+  44      =1  
+  45      =1  /****************************************************************************/
+  46      =1  /*                              INCLUDE FILES                               */
+  47      =1  /****************************************************************************/
+  48      =1  
+  49      =1  /****************************************************************************/
+  50      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  51      =1  /****************************************************************************/
+  52      =1  #ifndef BYTE
+  53      =1  typedef unsigned char   BYTE;
+  54      =1  typedef unsigned short  WORD;
+  55      =1  typedef unsigned long   DWORD;
+  56      =1  
+  57      =1  #define IIBYTE BYTE idata  /* Internal indexed data byte */
+  58      =1  #define IBYTE  BYTE data   /* Internal data byte */
+  59      =1  #define IWORD  WORD data   /* Internal data word */
+  60      =1  #define IDWORD DWORD data  /* Internal data double word*/
+  61      =1  
+  62      =1  #define XBYTE  BYTE xdata  /* External data byte */
+  63      =1  #define XWORD  WORD xdata  /* External data word */
+  64      =1  #define XDWORD DWORD xdata /* External data double word */
+  65      =1  #define BBYTE  BYTE bdata  /* Internal bit adressable byte */
+  66      =1  
+  67      =1  #define PBYTE  XBYTE
+  68      =1  #define PWORD  XWORD
+  69      =1  #define PDWORD XDWORD
+  70      =1  
+  71      =1  #define BOOL   bit         /* Internal bit */
+  72      =1  
+  73      =1  #define CODE   code        /* Used for defining callback function which allways */
+  74      =1                             /* resides in code space. */
+  75      =1  
+  76      =1  typedef BYTE * BYTE_P;
+  77      =1  typedef WORD * WORD_P;
+  78      =1  typedef DWORD * DWORD_P;
+  79      =1  
+  80      =1  typedef struct
+  81      =1  {
+  82      =1    BYTE anything;
+  83      =1  } sSomeXDATA4K;
+  84      =1  typedef sSomeXDATA4K * XDATA4K_P;
+  85      =1  #endif
+  86      =1  
+  87      =1  #ifndef EOF
+  88      =1  #define EOF (-1)
+  89      =1  #endif
+  90      =1  
+  91      =1  #ifndef NULL
+  92      =1  #define NULL  (0)
+  93      =1  #endif
+  94      =1  
+  95      =1  #ifndef TRUE
+  96      =1  #define TRUE  (1)
+  97      =1  #define FALSE (0)
+  98      =1  #endif
+  99      =1  
+ 100      =1  /* Define for making easy and consistent callback definitions */
+ 101      =1  #define VOID_CALLBACKFUNC(completedFunc)  void (CODE *completedFunc)
+ 102      =1  
+ 103      =1  /* Remove memory specifier byte from generic pointer
+ 104      =1     See also: http://www.keil.com/forum/3443/ */
+ 105      =1  #ifdef __C51__
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 4   
+
+ 106      =1  #define STRIP_GENERIC_PTR(p) ((unsigned) (void *) (p))
+ 107      =1  /* Macros to test generic pointers for NULL-ness, even if they
+ 108      =1  have been promoted from memory specific pointers */
+ 109      =1  #define IS_NULL(x)  (STRIP_GENERIC_PTR(x) == 0)
+ 110      =1  #define NON_NULL(x) (STRIP_GENERIC_PTR(x) != 0)
+ 111      =1  #else
+ 115      =1  
+ 116      =1  #define UNUSED(x) x = x; /* Hack to silence warning C280 Unreferenced local variable */
+ 117      =1  #define UNUSED_CONST(x) if(x) ; /* Hack to silence warning C280 Unreferenced const variable */
+ 118      =1  
+ 119      =1  #define UIP_HTONL(x) x // C51 is big endian by default
+ 120      =1  
+ 121      =1  /****************************************************************************/
+ 122      =1  /*                                 MACROS                                   */
+ 123      =1  /****************************************************************************/
+ 124      =1  
+ 125      =1  /* offset of field m in a struct s */
+ 126      =1  #ifndef offsetof
+ 127      =1  #define offsetof(s,m)   (WORD)( (BYTE_P)&(((s *)0)->m) - (BYTE_P)0 )
+ 128      =1  #endif
+ 129      =1  
+ 130      =1  
+ 131      =1  #endif /* _ZW_TYPEDEFS_H_ */
+  25          #include <ZW_task.h>
+   1      =1  /**
+   2      =1   * @file
+   3      =1   * Task pool handler.
+   4      =1   * @copyright Copyright (c) 2001-2017, Sigma Designs Inc., All Rights Reserved
+   5      =1   */
+   6      =1  
+   7      =1  #ifndef _ZW_TASK_H_
+   8      =1  #define _ZW_TASK_H_
+   9      =1  
+  10      =1  /****************************************************************************/
+  11      =1  /*                              INCLUDE FILES                               */
+  12      =1  /****************************************************************************/
+  13      =1  
+  14      =1  #include <ZW_stdint.h>
+   1      =2  /*
+   2      =2   * ZW_stdint.h
+   3      =2   *
+   4      =2   * Define integer types by their conventional POSIX names [1].
+   5      =2   * Note: This is a small subset of the spec, NOT a complete definition.
+   6      =2   *
+   7      =2   *  [1] http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stdint.h.html
+   8      =2   *
+   9      =2   *  Created on: 18/01/2013
+  10      =2   *      Author: jbu
+  11      =2   */
+  12      =2  #ifndef ZW_STDINT_H_
+  15      =1  
+  16      =1  /****************************************************************************/
+  17      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  18      =1  /****************************************************************************/
+  19      =1  #ifndef TASK_POOL_SIZE
+  20      =1  #define TASK_POOL_SIZE 5
+  21      =1  #endif
+  22      =1  
+  23      =1  
+  24      =1  /****************************************************************************/
+  25      =1  /*                              EXPORTED DATA                               */
+  26      =1  /****************************************************************************/
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 5   
+
+  27      =1  
+  28      =1  
+  29      =1  /****************************************************************************/
+  30      =1  /*                           EXPORTED FUNCTIONS                             */
+  31      =1  /****************************************************************************/
+  32      =1  
+  33      =1  
+  34      =1  /**
+  35      =1   * @brief Add task to task pool.
+  36      =1   * @param[in] CBPolltask function pointer to the task to poll.
+  37      =1   * @param[in] pTaskName pointer to a string descriping the Task name.
+  38      =1   * @return task handle ID or 0 if task-pool is full. Increase TASK_POOL_SIZE
+  39      =1   * if pool is full.
+  40      =1   */
+  41      =1  uint8_t TaskAdd(BOOL (CODE *CBPolltask)(void), const char * pTaskName);
+  42      =1  
+  43      =1  /**
+  44      =1   * @brief Pause the task.
+  45      =1   * @param[in] taskhandeId task handle ID
+  46      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  47      =1   */
+  48      =1  BOOL TaskPause(uint8_t taskhandeId);
+  49      =1  
+  50      =1  /**
+  51      =1   * @brief Run the paused task. If running do nothing.
+  52      =1   * @param[in] taskhandeId task handle ID
+  53      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  54      =1   */
+  55      =1  BOOL TaskRun(uint8_t taskhandeId);
+  56      =1  
+  57      =1  
+  58      =1  /**
+  59      =1   * @brief Remove the task from pool.
+  60      =1   * @param[in] taskhandeId task handle ID
+  61      =1   * @return FALSE if taskhandeId is unknown else TRUE.
+  62      =1   */
+  63      =1  BOOL TaskRemove(uint8_t taskhandeId);
+  64      =1  
+  65      =1  
+  66      =1  /**
+  67      =1   * @brief Interrupt process signal to the Task Handler to run all task in pool
+  68      =1   * to check for new jobs.
+  69      =1   */
+  70      =1  void TaskInterruptSignal(void);
+  71      =1  
+  72      =1  /**
+  73      =1   * @brief Task handler main poll queue.
+  74      =1   * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+  75      =1   * TRUE if one or more task has job.
+  76      =1   */
+  77      =1  BOOL TaskApplicationPoll(void);
+  78      =1  
+  79      =1  
+  80      =1  /**
+  81      =1   * @brief TaskJobHasWork
+  82      =1   * Ask task handler if more task job to run. If not go to sleep.
+  83      =1   * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+  84      =1   * TRUE if one or more task has job.
+  85      =1   */
+  86      =1  BOOL TaskJobHasWork();
+  87      =1  
+  88      =1  
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 6   
+
+  89      =1  #endif /* _ZW_TASK_H_ */
+  90      =1  
+  91      =1  
+  26          #include <ZW_mem_api.h>
+   1      =1  /*******************************  ZW_MEM_API.H  *******************************
+   2      =1   *           #######
+   3      =1   *           ##  ##
+   4      =1   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =1   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =1   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =1   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =1   *          #######   ####   ##  ##  #####       ##  #####
+   9      =1   *                                           #####
+  10      =1   *          Z-Wave, the wireless lauguage.
+  11      =1   *
+  12      =1   *              Copyright (c) 2001
+  13      =1   *              Zensys A/S
+  14      =1   *              Denmark
+  15      =1   *
+  16      =1   *              All Rights Reserved
+  17      =1   *
+  18      =1   *    This source file is subject to the terms and conditions of the
+  19      =1   *    Zensys Software License Agreement which restricts the manner
+  20      =1   *    in which it may be used.
+  21      =1   *
+  22      =1   *---------------------------------------------------------------------------
+  23      =1   *
+  24      =1   * Description: Copy of data to/from non-volatile memory (EEPROM)
+  25      =1   *              Standard memory functions.
+  26      =1   *
+  27      =1   * Author:   Ivar Jeppesen
+  28      =1   *
+  29      =1   * Last Changed By:  $Author: efh $
+  30      =1   * Revision:         $Revision: 29682 $
+  31      =1   * Last Changed:     $Date: 2014-10-06 15:12:09 +0200 (ma, 06 okt 2014) $
+  32      =1   *
+  33      =1   ****************************************************************************/
+  34      =1  #ifndef _ZW_MEM_API_H_
+  35      =1  #define _ZW_MEM_API_H_
+  36      =1  
+  37      =1  /****************************************************************************/
+  38      =1  /*                              INCLUDE FILES                               */
+  39      =1  /****************************************************************************/
+  40      =1  #include <ZW_typedefs.h>
+   1      =2  /*******************************  ZW_typedefs.h  *******************************
+   2      =2   *           #######
+   3      =2   *           ##  ##
+   4      =2   *           #  ##    ####   #####    #####  ##  ##   #####
+   5      =2   *             ##    ##  ##  ##  ##  ##      ##  ##  ##
+   6      =2   *            ##  #  ######  ##  ##   ####   ##  ##   ####
+   7      =2   *           ##  ##  ##      ##  ##      ##   #####      ##
+   8      =2   *          #######   ####   ##  ##  #####       ##  #####
+   9      =2   *                                           #####
+  10      =2   *          Products that speak Z-Wave work together better
+  11      =2   *
+  12      =2   *              Copyright (c) 2008
+  13      =2   *              Zensys A/S
+  14      =2   *              Denmark
+  15      =2   *
+  16      =2   *              All Rights Reserved
+  17      =2   *
+  18      =2   *    This source file is subject to the terms and conditions of the
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 7   
+
+  19      =2   *    Zensys Software License Agreement which restricts the manner
+  20      =2   *    in which it may be used.
+  21      =2   *
+  22      =2   *---------------------------------------------------------------------------
+  23      =2   *
+  24      =2   * Description: Module description
+  25      =2   *
+  26      =2   * Author:   Ivar Jeppesen
+  27      =2   *
+  28      =2   * Last Changed By:  $Author: efh $
+  29      =2   * Revision:         $Revision: 29359 $
+  30      =2   * Last Changed:     $Date: 2014-07-11 11:13:33 +0200 (fr, 11 jul 2014) $
+  31      =2   *
+  32      =2   ****************************************************************************/
+  33      =2  #ifndef _ZW_TYPEDEFS_H_
+  41      =1  
+  42      =1  #ifdef NO_MEM_FUNCTIONS
+  45      =1  #define memcpy(dst, src, len)  __ZW_memcpy(len, dst, src)
+  46      =1  #define memcmp(dst, src, len)  __ZW_memcmp(len, dst, src)
+  47      =1  #define memset(dst, val, len)  __ZW_memset(val, len, dst)
+  48      =1  #endif
+  49      =1  #define ZW_memcpy(dst, src, len)  __ZW_memcpy(len, dst, src)
+  50      =1  #define ZW_memcmp(dst, src, len)  __ZW_memcmp(len, dst, src)
+  51      =1  #define ZW_memset(dst, val, len)  __ZW_memset(val, len, dst)
+  52      =1  
+  53      =1  /****************************************************************************/
+  54      =1  /*                     EXPORTED TYPES and DEFINITIONS                       */
+  55      =1  /****************************************************************************/
+  56      =1  /****************************  Memory  **************************************
+  57      =1  ** Copy of data to non-volatile memory (FLASH) only valid for slave and
+  58      =1  ** slave_routing libraries
+  59      =1  **
+  60      =1  **  Side effects: The non-volatile memory write operation is delayed via a timer.
+  61      =1  **                The physical write is delayed about 200 msec.
+  62      =1  **/
+  63      =1  
+  64      =1  /*============================   MemoryGetID   ===============================
+  65      =1  **  Copy the Home-ID and Node-ID to the specified RAM addresses
+  66      =1  **  BYTE *homeid pointer to RAM were the home ID should be placed
+  67      =1  **  BYTE *nodeid pointer to RAM were the Node ID should be placed.
+  68      =1  **--------------------------------------------------------------------------*/
+  69      =1  #define ZW_MEMORY_GET_ID(homeid,nodeid)   MemoryGetID(homeid,nodeid)
+  70      =1  
+  71      =1  /*============================   MemoryGetByte   ============================
+  72      =1  **    Read one byte from the EEPROM
+  73      =1  **
+  74      =1  ** BYTE               RET Data
+  75      =1  ** MemoryGetByte(
+  76      =1  ** WORD  offset );    IN   Application area offset
+  77      =1  **--------------------------------------------------------------------------*/
+  78      =1  #define ZW_MEM_GET_BYTE(offset) MemoryGetByte(offset)
+  79      =1  
+  80      =1  /*============================   MemoryPutByte   ============================
+  81      =1  **    Write one byte to the EEPROM
+  82      =1  **
+  83      =1  ** BYTE               RET False if write buffer full
+  84      =1  ** MemoryPutByte(
+  85      =1  ** WORD  offset,      IN   Application area offset
+  86      =1  ** BYTE  data );      IN   Data to store
+  87      =1  **--------------------------------------------------------------------------*/
+  88      =1  #define ZW_MEM_PUT_BYTE(offset,data) MemoryPutByte(offset,data)
+  89      =1  
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 8   
+
+  90      =1  /*============================   MemoryGetBuffer   =============================
+  91      =1  **    Read number of bytes from the EEPROM to a RAM buffer
+  92      =1  **
+  93      =1  ** void               RET Nothing
+  94      =1  ** MemoryGetBuffer(
+  95      =1  ** WORD  offset,      IN   Application area offset
+  96      =1  ** BYTE  *buffer,     IN   Buffer pointer
+  97      =1  ** WORD  length );    IN   Number of bytes to read
+  98      =1  **--------------------------------------------------------------------------*/
+  99      =1  #define ZW_MEM_GET_BUFFER(offset,buffer,length) MemoryGetBuffer(offset,buffer,length)
+ 100      =1  
+ 101      =1  /*============================   MemoryPutBuffer   =============================
+ 102      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 103      =1  **
+ 104      =1  **  Side effects: The EEPROM write operation has been done when function returns
+ 105      =1  **                and the callback is called max 10ms later via a timer
+ 106      =1  **
+ 107      =1  ** BYTE               RET FALSE if the buffer put queue is full
+ 108      =1  ** MemoryPutBuffer(
+ 109      =1  ** WORD  offset,          IN   Application area offset
+ 110      =1  ** BYTE  *buffer,         IN   Buffer pointer
+ 111      =1  ** WORD  length,          IN   Number of bytes to read
+ 112      =1  ** VOID_CALLBACKFUNC(func)( void) ); IN   Buffer write completed function pointer
+ 113      =1  **--------------------------------------------------------------------------*/
+ 114      =1  #define ZW_MEM_PUT_BUFFER(offset,buffer,length, func) MemoryPutBuffer(offset,buffer,length, func)
+ 115      =1  
+ 116      =1  
+ 117      =1  /*============================   ZW_MemoryPutBuffer   ========================
+ 118      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 119      =1  **
+ 120      =1  **  Side effects: The EEPROM write operation has been done when function returns
+ 121      =1  **                and the callback is called max 10ms later via a timer
+ 122      =1  **
+ 123      =1  ** BYTE               RET FALSE if the buffer put queue is full
+ 124      =1  ** ZW_MemoryPutBuffer(
+ 125      =1  ** WORD  offset,          IN   Application area offset
+ 126      =1  ** BYTE  length,          IN   Number of bytes to write
+ 127      =1  ** BYTE  *buffer,         IN   Buffer pointer
+ 128      =1  **--------------------------------------------------------------------------*/
+ 129      =1  #define ZW_MEM_PUT_BUFFER_NO_CB(offset,buffer,length) ZW_MemoryPutBuffer(offset,buffer,length)
+ 130      =1  
+ 131      =1  
+ 132      =1  /*===============================   ZW_EepromInit   ====================================
+ 133      =1  ** This function writes ZEROs in the entire EEPROM, then it write the homeID
+ 134      =1  ** if it different from ZERO. This function will only operate in the production mode.
+ 135      =1  **-----------------------------------------------------------------------------------*/
+ 136      =1  #define ZW_EEPROM_INIT(HOMEID)       ZW_EepromInit(HOMEID)
+ 137      =1  
+ 138      =1  /*============================   MemoryFlush   =============================
+ 139      =1  **    Write the content of the FLASH RAM buffer to the FLASH.
+ 140      =1  **
+ 141      =1  **  Side effects: During the write process the CPU wuill be in idle state.
+ 142      =1  **--------------------------------------------------------------------------*/
+ 143      =1  #define ZW_MEM_FLUSH()   ZW_MemoryFlush()
+ 144      =1  
+ 145      =1  
+ 146      =1  /****************************************************************************/
+ 147      =1  /*                              EXPORTED DATA                               */
+ 148      =1  /****************************************************************************/
+ 149      =1  
+ 150      =1  /****************************************************************************/
+ 151      =1  /*                           LOW LEVEL EXPORTED FUNCTIONS                   */
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 9   
+
+ 152      =1  /****************************************************************************/
+ 153      =1  
+ 154      =1  
+ 155      =1  /****************************************************************************/
+ 156      =1  /*                           EXPORTED FUNCTIONS                             */
+ 157      =1  /****************************************************************************/
+ 158      =1  
+ 159      =1  /*============================   MemoryGetID   ===============================
+ 160      =1  **    Copy the Home-ID and Node-ID to the specified RAM addresses
+ 161      =1  **
+ 162      =1  **--------------------------------------------------------------------------*/
+ 163      =1  extern void               /*RET Nothing          */
+ 164      =1  MemoryGetID(
+ 165      =1    BYTE *homeID,           /*OUT  Home-ID pointer            */
+ 166      =1    BYTE *nodeID );         /*OUT  Node-ID pointer            */
+ 167      =1  
+ 168      =1  /*============================   MemoryGetByte   =============================
+ 169      =1  **  Read one byte from the EEPROM
+ 170      =1  **
+ 171      =1  **  Side effects:
+ 172      =1  **--------------------------------------------------------------------------*/
+ 173      =1  extern BYTE               /*RET Data          */
+ 174      =1  MemoryGetByte(
+ 175      =1    WORD  offset );         /*IN   Application area offset            */
+ 176      =1  
+ 177      =1  /*============================   MemoryPutByte   =============================
+ 178      =1  **  Add one byte to the EEPROM write queue
+ 179      =1  **
+ 180      =1  **  Side effects:
+ 181      =1  **
+ 182      =1  **--------------------------------------------------------------------------*/
+ 183      =1  extern BYTE               /*RET FALSE if write buffer full    */
+ 184      =1  MemoryPutByte(
+ 185      =1    WORD  offset,           /*IN   Application area offset   */
+ 186      =1    BYTE  bData );          /*IN   Data to store             */
+ 187      =1  
+ 188      =1  /*============================   MemoryGetBuffer   =============================
+ 189      =1  **    Read number of bytes from the EEPROM to a RAM buffer
+ 190      =1  **
+ 191      =1  **  Side effects:
+ 192      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 193      =1  **--------------------------------------------------------------------------*/
+ 194      =1  extern void               /*RET Nothing          */
+ 195      =1  MemoryGetBuffer(
+ 196      =1    WORD  offset,           /*IN   Application area offset   */
+ 197      =1    BYTE  *buffer,          /*IN   Buffer pointer            */
+ 198      =1    BYTE  length );         /*IN   Number of bytes to read  */
+ 199      =1  
+ 200      =1  /*============================   MemoryPutBuffer   =============================
+ 201      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 202      =1  **
+ 203      =1  **  Side effects: Write has been executed when function returns and callback
+ 204      =1  **                is called via a timer max 10ms later
+ 205      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 206      =1  **--------------------------------------------------------------------------*/
+ 207      =1  extern BYTE               /*RET FALSE if the buffer put queue is full          */
+ 208      =1  MemoryPutBuffer(
+ 209      =1    WORD  offset,           /*IN   Application area offset   */
+ 210      =1    BYTE  *buffer,          /*IN   Buffer pointer            */
+ 211      =1    WORD  length,           /*IN   Number of bytes to copy   */
+ 212      =1    VOID_CALLBACKFUNC(func)( void) );  /*IN   Buffer write completed function pointer */
+ 213      =1  
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 10  
+
+ 214      =1  
+ 215      =1  /*==========================   ZW_MemoryPutBuffer   ==========================
+ 216      =1  **    Copy number of bytes from a RAM buffer to the EEPROM
+ 217      =1  **
+ 218      =1  **  Side effects: Write has been executed when function returns
+ 219      =1  **  Note: API is not supported in 400 series slave and routing slave targets
+ 220      =1  **--------------------------------------------------------------------------*/
+ 221      =1  extern BYTE               /*RET FALSE if the buffer put queue is full       */
+ 222      =1  ZW_MemoryPutBuffer(
+ 223      =1    WORD  offset,           /* IN Application area offset   */
+ 224      =1    BYTE  *buffer,          /* IN Buffer pointer            */
+ 225      =1    WORD  length);          /* IN Number of bytes to copy   */
+ 226      =1  
+ 227      =1  
+ 228      =1  /*===========================   MemoryGetStatus   ============================
+ 229      =1  **  Read status from the NVM
+ 230      =1  **
+ 231      =1  **  Side effects:
+ 232      =1  **--------------------------------------------------------------------------*/
+ 233      =1  extern BYTE               /*RET Data FALSE = 0 = OK, TRUE = 1 = read operation disturbed */
+ 234      =1  MemoryGetStatus(void);    /*IN  none          */
+ 235      =1  
+ 236      =1  /*==========================   MemoryClearStatus   ===========================
+ 237      =1  **  Clear status for the NVM
+ 238      =1  **
+ 239      =1  **  Side effects:
+ 240      =1  **--------------------------------------------------------------------------*/
+ 241      =1  extern void               /*RET none          */
+ 242      =1  MemoryClearStatus(void);  /*IN  none          */
+ 243      =1  
+ 244      =1  /*=============================   ZW_memcpy   ===============================
+ 245      =1  **    Copies length bytes from src to dst
+ 246      =1  **
+ 247      =1  **--------------------------------------------------------------------------*/
+ 248      =1  extern void       /* RET  Nothing */
+ 249      =1  __ZW_memcpy(
+ 250      =1    BYTE length,    /* IN   Number of bytes to copy */
+ 251      =1    BYTE *dst,      /* IN   Pointer to destination */
+ 252      =1    BYTE *src);     /* IN   Pointer to source */
+ 253      =1  
+ 254      =1  
+ 255      =1  /*=============================   ZW_memcmp   ===============================
+ 256      =1  **    Compares length bytes of src and dest
+ 257      =1  **
+ 258      =1  **--------------------------------------------------------------------------*/
+ 259      =1  extern BYTE       /* RET  0 if *src and *dst are equal, else 1 */
+ 260      =1  __ZW_memcmp(
+ 261      =1    BYTE length,    /* IN   Number of bytes to compare */
+ 262      =1    BYTE *dst,      /* IN   Pointer to buffer 1 */
+ 263      =1    BYTE *src);     /* IN   Pointer to buffer 2 */
+ 264      =1  
+ 265      =1  
+ 266      =1  /*===============================   ZW_memset   ==============================
+ 267      =1  **    Fill length bytes in dst with val
+ 268      =1  **
+ 269      =1  **--------------------------------------------------------------------------*/
+ 270      =1  void           /*RET Nothing */
+ 271      =1  __ZW_memset(
+ 272      =1    BYTE val,    /* IN Value to fill buffer with */
+ 273      =1    BYTE length, /* IN Number of bytes to set */
+ 274      =1    BYTE *dst);  /* IN Pointer to buffer to set/fill */
+ 275      =1  
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 11  
+
+ 276      =1  
+ 277      =1  #ifdef NVM_IS_EEPROM
+ 285      =1  
+ 286      =1  //#ifdef NVM_IS_FLASH
+ 287      =1  // NVM_IS_FLASH is defined in ZW_nvm_addr.h, which is not included by ZW_mem_api.h
+ 288      =1  // As ZW_nvm_addr.h is a basis-include, it cannot be used by an application.
+ 289      =1  #if defined(ZW_SLAVE_ROUTING) && !defined(ZW_SLAVE_32)
+ 298      =1  
+ 299      =1  #endif /* _ZW_MEM_API_H_ */
+  27          
+  28          /****************************************************************************/
+  29          /*                      PRIVATE TYPES and DEFINITIONS                       */
+  30          /****************************************************************************/
+  31          #ifdef TASK_DEBUG
+  35          #define TD_(x)
+  36          #endif
+  37          #define _TD_(x) /*outcommon debug print*/
+  38          
+  39          /**
+  40           * TASK_POOL_JOB includes all informations for a task.
+  41           */
+  42          typedef struct _TASK_POOL_JOB_
+  43          {
+  44            uint8_t id        : 6;
+  45            uint8_t active    : 1;
+  46            uint8_t notUsed   : 1;
+  47            BOOL (CODE *CBPolltask)(void);
+  48            const char* pTaskName;
+  49          } TASK_POOL_JOB;
+  50          
+  51          /**
+  52           * TASK_POOL structure
+  53           */
+  54          typedef struct _TASK_POOL_
+  55          {
+  56            /**
+  57             * inptSignal is used to signal an interrupt has occur and task pool most
+  58             * be re-checked for jobs.
+  59             * TRUE interrupt has occur
+  60             * FALSE no interrupt has occur
+  61             */
+  62            uint8_t intpSignal;
+  63            /**
+  64             * poolJobStatus is used to control pool jobs.
+  65             * TRUE on or more active pool jobs.
+  66             * FALSE no active pool jobs.
+  67             */
+  68            uint8_t poolJobStatus;
+  69            uint8_t nextSlot;            /** < next task to be run*/
+  70            uint8_t usedSlots;
+  71            TASK_POOL_JOB myTaskPool[TASK_POOL_SIZE];
+  72          } TASK_POOL;
+  73          
+  74          
+  75          /****************************************************************************/
+  76          /*                              PRIVATE DATA                                */
+  77          /****************************************************************************/
+  78          
+  79          static TASK_POOL myTask;
+  80          
+  81          /****************************************************************************/
+  82          /*                              EXPORTED DATA                               */
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 12  
+
+  83          /****************************************************************************/
+  84          
+  85          /****************************************************************************/
+  86          /*                            PRIVATE FUNCTIONS                             */
+  87          /****************************************************************************/
+  88          
+  89          /**
+  90           * @brief TaskAddQueue
+  91           * Add task to task pool.
+  92           * @param CBPolltask function pointer to the task to poll.
+  93           * @param pTaskName pointer to a string describing the Task name.
+  94           * @return task handle ID or 0 if task-pool is full. Increase TASK_POOL_SIZE
+  95           * if pool is full.
+  96           */
+  97          uint8_t TaskAdd(BOOL (CODE *CBPolltask)(void), const char * pTaskName)
+  98          {
+  99   1        uint8_t i = 0;
+ 100   1        uint8_t freeSlot = 0xff;
+ 101   1        uint8_t nextId = 0;
+ 102   1      
+ 103   1        /*Search for a free slot in pool queue*/
+ 104   1        for(i = 0; i < TASK_POOL_SIZE; i++)
+ 105   1        {
+ 106   2          /* find free slot*/
+ 107   2          if((0 == myTask.myTaskPool[i].id) && (0xff == freeSlot))
+ 108   2          {
+ 109   3            freeSlot = i;
+ 110   3          }
+ 111   2      
+ 112   2          /* find next Id*/
+ 113   2          if( nextId <= myTask.myTaskPool[i].id)
+ 114   2          {
+ 115   3            nextId = myTask.myTaskPool[i].id + 1;
+ 116   3          }
+ 117   2      
+ 118   2          /*Check if it is in pool*/
+ 119   2          if((CBPolltask == myTask.myTaskPool[i].CBPolltask) &&
+ 120   2              (NULL != CBPolltask))
+ 121   2          {
+ 122   3            /*Task is in pool*/
+ 123   3            myTask.nextSlot = i;
+ 124   3            myTask.poolJobStatus = TRUE; /*Force pool check*/
+ 125   3            /*Break loop and return the task id*/
+ 126   3            freeSlot = 0xff;
+ 127   3            nextId = myTask.myTaskPool[i].id;
+ 128   3            myTask.myTaskPool[i].pTaskName = pTaskName;
+ 129   3            break;
+ 130   3          }
+ 131   2        }
+ 132   1      
+ 133   1        /** Add task to pool*/
+ 134   1        if(0xff != freeSlot)
+ 135   1        {
+ 136   2          myTask.myTaskPool[freeSlot].id = nextId;
+ 137   2          myTask.myTaskPool[freeSlot].active = TRUE;
+ 138   2          myTask.myTaskPool[freeSlot].CBPolltask = CBPolltask;
+ 139   2          myTask.myTaskPool[freeSlot].pTaskName = pTaskName;
+ 140   2          myTask.poolJobStatus = TRUE; /*Force pool check*/
+ 141   2          myTask.nextSlot = freeSlot;
+ 142   2          if(freeSlot >= myTask.usedSlots)
+ 143   2          {
+ 144   3            myTask.usedSlots = freeSlot + 1;
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 13  
+
+ 145   3          }
+ 146   2        }
+ 147   1        else{
+ 148   2          nextId = 0;
+ 149   2        }
+ 150   1        return nextId;
+ 151   1      }
+ 152          
+ 153          
+ 154          /**
+ 155           * @brief TaskPause
+ 156           * Pause task.
+ 157           * @param taskhandeId task handle ID
+ 158           * @return FALSE if taskhandeId is unknown else TRUE.
+ 159           */
+ 160          BOOL TaskPause(uint8_t taskhandeId)
+ 161          {
+ 162   1        uint8_t i = 0;
+ 163   1        BOOL status = FALSE;
+ 164   1      
+ 165   1        for(i = 0; i < myTask.usedSlots; i++)
+ 166   1        {
+ 167   2          /* find Id*/
+ 168   2          if( taskhandeId == myTask.myTaskPool[i].id)
+ 169   2          {
+ 170   3            myTask.myTaskPool[i].active = FALSE;
+ 171   3            status = TRUE;
+ 172   3            break;
+ 173   3          }
+ 174   2        }
+ 175   1        return status;
+ 176   1      }
+ 177          
+ 178          
+ 179          /**
+ 180           * @brief TaskRun
+ 181           * Run pause task. If running do nothing.
+ 182           * @param taskhandeId task handle ID
+ 183           * @return FALSE if taskhandeId is unknown else TRUE.
+ 184           */
+ 185          BOOL TaskRun(uint8_t taskhandeId)
+ 186          {
+ 187   1        uint8_t i = 0;
+ 188   1        BOOL status = FALSE;
+ 189   1      
+ 190   1        for(i = 0; i < myTask.usedSlots; i++)
+ 191   1        {
+ 192   2          /* find Id*/
+ 193   2          if( taskhandeId == myTask.myTaskPool[i].id)
+ 194   2          {
+ 195   3            myTask.myTaskPool[i].active = TRUE;
+ 196   3            status = TRUE;
+ 197   3          }
+ 198   2        }
+ 199   1        return status;
+ 200   1      }
+ 201          
+ 202          
+ 203          /**
+ 204           * @brief TaskRemove
+ 205           * Remove task from pool.
+ 206           * @param taskhandeId task handle ID
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 14  
+
+ 207           * @return FALSE if taskhandeId is unknown else TRUE.
+ 208           */
+ 209          BOOL TaskRemove(uint8_t taskhandeId)
+ 210          {
+ 211   1        uint8_t i = 0;
+ 212   1        BOOL status = FALSE;
+ 213   1      
+ 214   1        for(i = 0; i < myTask.usedSlots; i++)
+ 215   1        {
+ 216   2          /* find Id*/
+ 217   2          if( taskhandeId == myTask.myTaskPool[i].id)
+ 218   2          {
+ 219   3            myTask.myTaskPool[i].id = 0;
+ 220   3            myTask.myTaskPool[i].active = FALSE;
+ 221   3            myTask.myTaskPool[i].CBPolltask = NULL;
+ 222   3            myTask.myTaskPool[i].pTaskName = NULL;
+ 223   3            myTask.nextSlot = 0;
+ 224   3            status = TRUE;
+ 225   3      
+ 226   3            /* Count usedSlots down if it is last task in pool.*/
+ 227   3            while((0 == myTask.myTaskPool[i].id) && ((i + 1) ==  myTask.usedSlots))
+ 228   3            {
+ 229   4              myTask.usedSlots--;
+ 230   4              if(0 != i)
+ 231   4              {
+ 232   5                /* check prev slot*/
+ 233   5                --i;
+ 234   5              }
+ 235   4              else
+ 236   4              {
+ 237   5                /*pool empty*/
+ 238   5                break;
+ 239   5              }
+ 240   4            }
+ 241   3          }
+ 242   2        }
+ 243   1        return status;
+ 244   1      }
+ 245          
+ 246          
+ 247          /**
+ 248           * @brief TaskInterruptSignal
+ 249           * Interrupt process signal to the Task Handler to run all task in pool
+ 250           * to check for new jobs.
+ 251           */
+ 252          void TaskInterruptSignal(void)
+ 253          {
+ 254   1        myTask.intpSignal = TRUE;
+ 255   1      }
+ 256          
+ 257          
+ 258          /**
+ 259           * @brief TaskApplicationPoll
+ 260           * Task handler main poll queue.
+ 261           * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+ 262           * TRUE if one or more task has job.
+ 263           */
+ 264          BOOL TaskApplicationPoll(void)
+ 265          {
+ 266   1        uint8_t i = 0;
+ 267   1      
+ 268   1        /* Clear Interrupt flag because we check the pool*/
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 15  
+
+ 269   1        myTask.intpSignal = FALSE;
+ 270   1      
+ 271   1        /* Only initiate poolJobStatus to FALSE if nextId = 0. we
+ 272   1           want to check the whole pool*/
+ 273   1        if(0 == myTask.nextSlot)
+ 274   1        {
+ 275   2          myTask.poolJobStatus = FALSE;
+ 276   2        }
+ 277   1        else{
+ 278   2          myTask.poolJobStatus = TRUE;
+ 279   2        }
+ 280   1      
+ 281   1        for(i = myTask.nextSlot; i < myTask.usedSlots; i++)
+ 282   1        {
+ 283   2          /* check job*/
+ 284   2          if((0 != myTask.myTaskPool[i].id) &&
+ 285   2             (TRUE == myTask.myTaskPool[i].active) &&
+ 286   2             (NULL != myTask.myTaskPool[i].CBPolltask)
+ 287   2            )
+ 288   2          {
+ 289   3            /*Call task*/
+ 290   3            if(TRUE == myTask.myTaskPool[i].CBPolltask())
+ 291   3            {
+ 292   4              /*Task was active*/
+ 293   4              myTask.poolJobStatus = TRUE;
+ 294   4      
+ 295   4              if(TASK_POOL_SIZE <= ++myTask.nextSlot)
+ 296   4              {
+ 297   5                myTask.nextSlot = 0;
+ 298   5              }
+ 299   4              return TaskJobHasWork();
+ 300   4            }
+ 301   3            else{
+ 302   4              /*No job.. check next*/
+ 303   4            }
+ 304   3          }
+ 305   2        }
+ 306   1        myTask.nextSlot = 0;
+ 307   1        return TaskJobHasWork();
+ 308   1      }
+ 309          
+ 310          
+ 311          /**
+ 312           * @brief TaskJobHasWork
+ 313           * Ask task handler if more task job to run. If not go to sleep.
+ 314           * @return FALSE if pool tasks has no jobs or no Interrupt has occur.
+ 315           * TRUE if one or more task has job.
+ 316           */
+ 317          BOOL TaskJobHasWork()
+ 318          {
+ 319   1        return (myTask.intpSignal || myTask.poolJobStatus);
+ 320   1      }
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 16  
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION _TaskAdd (BEGIN)
+                                           ; SOURCE LINE # 97
+                 R     MOV     DPTR,#pTaskName
+                 E     CALL    ?C?PSTXDATA
+;---- Variable 'CBPolltask' assigned to Register 'R4/R5' ----
+                       MOV     R5,AR7
+                       MOV     R4,AR6
+                                           ; SOURCE LINE # 98
+                                           ; SOURCE LINE # 99
+                       CLR     A
+                 R     MOV     DPTR,#i
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 100
+                       INC     DPTR
+                       MOV     A,#0FFH
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 101
+                       CLR     A
+                       INC     DPTR
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 104
+                 R     MOV     DPTR,#i
+                       MOVX    @DPTR,A
+             ?C0001:
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                       CLR     C
+                       SUBB    A,#05H
+                 R     xJGE    ?C0002
+                                           ; SOURCE LINE # 105
+                                           ; SOURCE LINE # 107
+                       MOV     A,R7
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ANL     A,#03FH
+                       MOV     R7,A
+                 R     xJNZ    ?C0004
+                 R     MOV     DPTR,#freeSlot
+                       MOVX    A,@DPTR
+                 R     xJNE    A,#0FFH,?C0004
+                                           ; SOURCE LINE # 108
+                                           ; SOURCE LINE # 109
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       INC     DPTR
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 110
+             ?C0004:
+                                           ; SOURCE LINE # 113
+                 R     MOV     DPTR,#nextId
+                       MOVX    A,@DPTR
+                       SETB    C
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 17  
+
+                       SUBB    A,R7
+                 R     xJGE    ?C0005
+                                           ; SOURCE LINE # 114
+                                           ; SOURCE LINE # 115
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ANL     A,#03FH
+                       INC     A
+                 R     MOV     DPTR,#nextId
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 116
+             ?C0005:
+                                           ; SOURCE LINE # 119
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+05H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+05H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       XRL     A,R5
+                 R     JNZ     ?C0045
+                       MOV     A,R6
+                       XRL     A,R4
+             ?C0045:
+                 R     xJNZ    ?C0003
+                       MOV     A,R5
+                       ORL     A,R4
+                 R     xJZ     ?C0003
+                                           ; SOURCE LINE # 121
+                                           ; SOURCE LINE # 123
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                 R     MOV     DPTR,#myTask+02H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 124
+                 R     MOV     DPTR,#myTask+01H
+                       MOV     A,#01H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 126
+                 R     MOV     DPTR,#freeSlot
+                       MOV     A,#0FFH
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 127
+                       MOV     A,R7
+                       MOV     B,#06H
+                       MUL     AB
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 18  
+
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ANL     A,#03FH
+                 R     MOV     DPTR,#nextId
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 128
+                 R     MOV     DPTR,#pTaskName
+                 E     CALL    ?C?PLDXDATA
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+07H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+07H
+                       MOV     DPH,A
+                 E     CALL    ?C?PSTXDATA
+                                           ; SOURCE LINE # 129
+                 R     xJMP    ?C0002
+                                           ; SOURCE LINE # 130
+                                           ; SOURCE LINE # 131
+             ?C0003:
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       INC     A
+                       MOVX    @DPTR,A
+                 R     xJMP    ?C0001
+             ?C0002:
+                                           ; SOURCE LINE # 134
+                 R     MOV     DPTR,#freeSlot
+                       MOVX    A,@DPTR
+                       CPL     A
+                 R     xJZ     ?C0007
+                                           ; SOURCE LINE # 135
+                                           ; SOURCE LINE # 136
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       ANL     A,#03FH
+                       MOV     R7,A
+                 R     MOV     DPTR,#freeSlot
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ANL     A,#0C0H
+                       ORL     A,R7
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 137
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 19  
+
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ORL     A,#040H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 138
+                       MOV     R7,AR5
+                 R     MOV     DPTR,#freeSlot
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+05H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+05H
+                       MOV     DPH,A
+                       MOV     A,R4
+                       MOVX    @DPTR,A
+                       INC     DPTR
+                       MOV     A,R7
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 139
+                 R     MOV     DPTR,#pTaskName
+                 E     CALL    ?C?PLDXDATA
+                       MOV     A,R5
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+07H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+07H
+                       MOV     DPH,A
+                 E     CALL    ?C?PSTXDATA
+                                           ; SOURCE LINE # 140
+                 R     MOV     DPTR,#myTask+01H
+                       MOV     A,#01H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 141
+                       INC     DPTR
+                       MOV     A,R5
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 142
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                       MOV     A,R5
+                       CLR     C
+                       SUBB    A,R7
+                 R     xJLT    ?C0009
+                                           ; SOURCE LINE # 143
+                                           ; SOURCE LINE # 144
+                       MOV     A,R5
+                       INC     A
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 145
+                                           ; SOURCE LINE # 146
+                 R     xJMP    ?C0009
+             ?C0007:
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 20  
+
+                                           ; SOURCE LINE # 147
+                                           ; SOURCE LINE # 148
+                       CLR     A
+                 R     MOV     DPTR,#nextId
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 149
+             ?C0009:
+                                           ; SOURCE LINE # 150
+                 R     MOV     DPTR,#nextId
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                                           ; SOURCE LINE # 151
+             ?C0010:
+                       RET     
+             ; FUNCTION _TaskAdd (END)
+
+             ; FUNCTION _TaskPause (BEGIN)
+                                           ; SOURCE LINE # 160
+;---- Variable 'taskhandeId' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 161
+                                           ; SOURCE LINE # 162
+;---- Variable 'i' assigned to Register 'R6' ----
+                       CLR     A
+                       MOV     R6,A
+                                           ; SOURCE LINE # 163
+                 R     CLR     status
+                                           ; SOURCE LINE # 165
+             ?C0011:
+                 R     MOV     DPTR,#myTask+03H
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       MOV     A,R6
+                       CLR     C
+                       SUBB    A,R5
+                 R     xJGE    ?C0012
+                                           ; SOURCE LINE # 166
+                                           ; SOURCE LINE # 168
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       ANL     A,#03FH
+                 R     xJNE    A,AR7,?C0013
+                                           ; SOURCE LINE # 169
+                                           ; SOURCE LINE # 170
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOV     A,R5
+                       ANL     A,#0BFH
+                       MOVX    @DPTR,A
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 21  
+
+                                           ; SOURCE LINE # 171
+                 R     SETB    status
+                                           ; SOURCE LINE # 172
+                 R     xJMP    ?C0012
+                                           ; SOURCE LINE # 173
+                                           ; SOURCE LINE # 174
+             ?C0013:
+                       INC     R6
+                 R     xJMP    ?C0011
+             ?C0012:
+                                           ; SOURCE LINE # 175
+                 R     MOV     C,status
+                                           ; SOURCE LINE # 176
+             ?C0015:
+                       RET     
+             ; FUNCTION _TaskPause (END)
+
+             ; FUNCTION _TaskRun (BEGIN)
+                                           ; SOURCE LINE # 185
+;---- Variable 'taskhandeId' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 186
+                                           ; SOURCE LINE # 187
+;---- Variable 'i' assigned to Register 'R6' ----
+                       CLR     A
+                       MOV     R6,A
+                                           ; SOURCE LINE # 188
+                 R     CLR     status
+                                           ; SOURCE LINE # 190
+             ?C0016:
+                 R     MOV     DPTR,#myTask+03H
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       MOV     A,R6
+                       CLR     C
+                       SUBB    A,R5
+                 R     xJGE    ?C0017
+                                           ; SOURCE LINE # 191
+                                           ; SOURCE LINE # 193
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       ANL     A,#03FH
+                 R     xJNE    A,AR7,?C0018
+                                           ; SOURCE LINE # 194
+                                           ; SOURCE LINE # 195
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOV     A,R5
+                       ORL     A,#040H
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 22  
+
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 196
+                 R     SETB    status
+                                           ; SOURCE LINE # 197
+                                           ; SOURCE LINE # 198
+             ?C0018:
+                       INC     R6
+                 R     xJMP    ?C0016
+             ?C0017:
+                                           ; SOURCE LINE # 199
+                 R     MOV     C,status
+                                           ; SOURCE LINE # 200
+             ?C0020:
+                       RET     
+             ; FUNCTION _TaskRun (END)
+
+             ; FUNCTION _TaskRemove (BEGIN)
+                                           ; SOURCE LINE # 209
+;---- Variable 'taskhandeId' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 210
+                                           ; SOURCE LINE # 211
+;---- Variable 'i' assigned to Register 'R6' ----
+                       CLR     A
+                       MOV     R6,A
+                                           ; SOURCE LINE # 212
+                 R     CLR     status
+                                           ; SOURCE LINE # 214
+             ?C0021:
+                 R     MOV     DPTR,#myTask+03H
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       MOV     A,R6
+                       CLR     C
+                       SUBB    A,R5
+                 R     xJGE    ?C0022
+                                           ; SOURCE LINE # 215
+                                           ; SOURCE LINE # 217
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R5,A
+                       ANL     A,#03FH
+                       XRL     A,R7
+                 R     xJNZ    ?C0023
+                                           ; SOURCE LINE # 218
+                                           ; SOURCE LINE # 219
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOV     A,R5
+                       ANL     A,#0C0H
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 23  
+
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 220
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ANL     A,#0BFH
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 221
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+05H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+05H
+                       MOV     DPH,A
+                       CLR     A
+                       MOVX    @DPTR,A
+                       INC     DPTR
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 222
+                       MOV     R3,A
+                       MOV     R2,A
+                       MOV     R1,A
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+07H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+07H
+                       MOV     DPH,A
+                 E     CALL    ?C?PSTXDATA
+                                           ; SOURCE LINE # 223
+                       CLR     A
+                 R     MOV     DPTR,#myTask+02H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 224
+                 R     SETB    status
+             ?C0025:
+                                           ; SOURCE LINE # 227
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       ANL     A,#03FH
+                 R     xJNZ    ?C0023
+                       MOV     A,R6
+                       INC     A
+                       MOV     R5,A
+                 R     MOV     DPTR,#myTask+03H
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 24  
+
+                       MOVX    A,@DPTR
+                 R     xJNE    A,AR5,?C0023
+                                           ; SOURCE LINE # 228
+                                           ; SOURCE LINE # 229
+                       MOVX    A,@DPTR
+                       DEC     A
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 230
+                       MOV     A,R6
+                 R     xJZ     ?C0023
+                                           ; SOURCE LINE # 231
+                                           ; SOURCE LINE # 233
+                       DEC     R6
+                                           ; SOURCE LINE # 234
+                 R     xJMP    ?C0025
+                                           ; SOURCE LINE # 236
+                                           ; SOURCE LINE # 238
+                                           ; SOURCE LINE # 239
+                                           ; SOURCE LINE # 240
+                                           ; SOURCE LINE # 241
+                                           ; SOURCE LINE # 242
+             ?C0023:
+                       INC     R6
+                 R     xJMP    ?C0021
+             ?C0022:
+                                           ; SOURCE LINE # 243
+                 R     MOV     C,status
+                                           ; SOURCE LINE # 244
+             ?C0029:
+                       RET     
+             ; FUNCTION _TaskRemove (END)
+
+             ; FUNCTION TaskInterruptSignal (BEGIN)
+                                           ; SOURCE LINE # 252
+                                           ; SOURCE LINE # 253
+                                           ; SOURCE LINE # 254
+                 R     MOV     DPTR,#myTask
+                       MOV     A,#01H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 255
+                       RET     
+             ; FUNCTION TaskInterruptSignal (END)
+
+             ; FUNCTION TaskApplicationPoll (BEGIN)
+                                           ; SOURCE LINE # 264
+                                           ; SOURCE LINE # 265
+                                           ; SOURCE LINE # 266
+                       CLR     A
+                 R     MOV     DPTR,#i
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 269
+                 R     MOV     DPTR,#myTask
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 273
+                 R     MOV     DPTR,#myTask+02H
+                       MOVX    A,@DPTR
+                 R     MOV     DPTR,#myTask+01H
+                 R     xJNZ    ?C0031
+                                           ; SOURCE LINE # 274
+                                           ; SOURCE LINE # 275
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 276
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 25  
+
+                 R     xJMP    ?C0032
+             ?C0031:
+                                           ; SOURCE LINE # 277
+                                           ; SOURCE LINE # 278
+                       MOV     A,#01H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 279
+             ?C0032:
+                                           ; SOURCE LINE # 281
+                 R     MOV     DPTR,#myTask+02H
+                       MOVX    A,@DPTR
+                 R     MOV     DPTR,#i
+                       MOVX    @DPTR,A
+             ?C0033:
+                 R     MOV     DPTR,#myTask+03H
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                       CLR     C
+                       SUBB    A,R7
+                 R     xJGE    ?C0034
+                                           ; SOURCE LINE # 282
+                                           ; SOURCE LINE # 284
+                       MOV     A,R6
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+04H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+04H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                       ANL     A,#03FH
+                 R     xJZ     ?C0035
+                       MOV     A,R7
+                       SWAP    A
+                       RRC     A
+                       RRC     A
+                       ANL     A,#03H
+                 R     xJNB    ACC.0,?C0035
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       MOV     R7,A
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+05H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+05H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R4,A
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       ORL     A,R4
+                 R     xJZ     ?C0035
+                                           ; SOURCE LINE # 288
+                                           ; SOURCE LINE # 290
+                       MOV     A,R7
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 26  
+
+                       MOV     B,#06H
+                       MUL     AB
+                 R     ADD     A,#LOW myTask+05H
+                       MOV     DPL,A
+                       CLR     A
+                 R     ADDC    A,#HIGH myTask+05H
+                       MOV     DPH,A
+                       MOVX    A,@DPTR
+                       MOV     R6,A
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       MOV     R2,AR6
+                       MOV     R1,A
+                 E     CALL    ?C?ICALL
+                 R     xJNC    ?C0035
+                                           ; SOURCE LINE # 291
+                                           ; SOURCE LINE # 293
+                 R     MOV     DPTR,#myTask+01H
+                       MOV     A,#01H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 295
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                       INC     A
+                       MOV     R7,A
+                       MOVX    @DPTR,A
+                       MOV     A,#05H
+                       SUBB    A,R7
+                 R     xJGE    ?C0046
+                                           ; SOURCE LINE # 296
+                                           ; SOURCE LINE # 297
+                       CLR     A
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 298
+             ?C0038:
+                                           ; SOURCE LINE # 299
+                 R     xJMP    ?C0046
+                                           ; SOURCE LINE # 300
+                                           ; SOURCE LINE # 301
+                                           ; SOURCE LINE # 303
+                                           ; SOURCE LINE # 304
+                                           ; SOURCE LINE # 305
+             ?C0035:
+                 R     MOV     DPTR,#i
+                       MOVX    A,@DPTR
+                       INC     A
+                       MOVX    @DPTR,A
+                 R     xJMP    ?C0033
+             ?C0034:
+                                           ; SOURCE LINE # 306
+                       CLR     A
+                 R     MOV     DPTR,#myTask+02H
+                       MOVX    @DPTR,A
+                                           ; SOURCE LINE # 307
+             ?C0046:
+                 R     CALL    TaskJobHasWork
+                                           ; SOURCE LINE # 308
+             ?C0039:
+                       RET     
+             ; FUNCTION TaskApplicationPoll (END)
+
+             ; FUNCTION TaskJobHasWork (BEGIN)
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 27  
+
+                                           ; SOURCE LINE # 317
+                                           ; SOURCE LINE # 318
+                                           ; SOURCE LINE # 319
+                 R     MOV     DPTR,#myTask
+                       MOVX    A,@DPTR
+                 R     xJNZ    ?C0043
+                       INC     DPTR
+                       MOVX    A,@DPTR
+                 R     xJZ     ?C0041
+             ?C0043:
+                       SETB    C
+                 R     xJMP    ?C0042
+             ?C0041:
+                       CLR     C
+             ?C0042:
+                                           ; SOURCE LINE # 320
+             ?C0044:
+                       RET     
+             ; FUNCTION TaskJobHasWork (END)
+
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 28  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+sSomeXDATA4K . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  1
+  anything . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+uint16_t . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+DWORD. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+u8_t . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+int32_t. . . . . . . . . . . . . . . .  TYPEDEF  -----  LONG     -----  4
+_TaskRemove. . . . . . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  taskhandeId. . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0007H  1
+  i. . . . . . . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0006H  1
+  status . . . . . . . . . . . . . . .  AUTO     DATA   BIT      0000H  1
+TASK_POOL_JOB. . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  6
+  id . . . . . . . . . . . . . . . . .  MEMBER   -----  FIELD    0000H  6.0
+  active . . . . . . . . . . . . . . .  MEMBER   -----  FIELD    0000H  1.6
+  notUsed. . . . . . . . . . . . . . .  MEMBER   -----  FIELD    0000H  1.7
+  CBPolltask . . . . . . . . . . . . .  MEMBER   -----  PTR      0001H  2
+  pTaskName. . . . . . . . . . . . . .  MEMBER   -----  PTR      0003H  3
+_TASK_POOL_. . . . . . . . . . . . . .  * TAG *  -----  STRUCT   -----  34
+  intpSignal . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  poolJobStatus. . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+  nextSlot . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  usedSlots. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+  myTaskPool . . . . . . . . . . . . .  MEMBER   -----  ARRAY    0004H  30
+uint_fast16_t. . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+_TaskPause . . . . . . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  taskhandeId. . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0007H  1
+  i. . . . . . . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0006H  1
+  status . . . . . . . . . . . . . . .  AUTO     DATA   BIT      0000H  1
+int_fast16_t . . . . . . . . . . . . .  TYPEDEF  -----  INT      -----  2
+_TaskAdd . . . . . . . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  CBPolltask . . . . . . . . . . . . .  * REG *  DATA   PTR      0004H  2
+  pTaskName. . . . . . . . . . . . . .  AUTO     XDATA  PTR      0000H  3
+  i. . . . . . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0003H  1
+  freeSlot . . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0004H  1
+  nextId . . . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0005H  1
+XDATA4K_P. . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+TaskApplicationPoll. . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  i. . . . . . . . . . . . . . . . . .  AUTO     XDATA  U_CHAR   0000H  1
+bool . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+u16_t. . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+DWORD_P. . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+BYTE . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+WORD . . . . . . . . . . . . . . . . .  TYPEDEF  -----  U_INT    -----  2
+_TASK_POOL_JOB_. . . . . . . . . . . .  * TAG *  -----  STRUCT   -----  6
+  id . . . . . . . . . . . . . . . . .  MEMBER   -----  FIELD    0000H  6.0
+  active . . . . . . . . . . . . . . .  MEMBER   -----  FIELD    0000H  1.6
+  notUsed. . . . . . . . . . . . . . .  MEMBER   -----  FIELD    0000H  1.7
+  CBPolltask . . . . . . . . . . . . .  MEMBER   -----  PTR      0001H  2
+  pTaskName. . . . . . . . . . . . . .  MEMBER   -----  PTR      0003H  3
+TaskInterruptSignal. . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+_TaskRun . . . . . . . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+  taskhandeId. . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0007H  1
+  i. . . . . . . . . . . . . . . . . .  * REG *  DATA   U_CHAR   0006H  1
+  status . . . . . . . . . . . . . . .  AUTO     DATA   BIT      0000H  1
+uint8_t. . . . . . . . . . . . . . . .  TYPEDEF  -----  U_CHAR   -----  1
+TASK_POOL. . . . . . . . . . . . . . .  TYPEDEF  -----  STRUCT   -----  34
+  intpSignal . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0000H  1
+  poolJobStatus. . . . . . . . . . . .  MEMBER   -----  U_CHAR   0001H  1
+C51 COMPILER V9.54   ZW_TASK                                                               11/21/2021 08:16:56 PAGE 29  
+
+NAME                                    CLASS   MSPACE  TYPE    OFFSET  SIZE
+====                                    =====   ======  ====    ======  ====
+
+
+  nextSlot . . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0002H  1
+  usedSlots. . . . . . . . . . . . . .  MEMBER   -----  U_CHAR   0003H  1
+  myTaskPool . . . . . . . . . . . . .  MEMBER   -----  ARRAY    0004H  30
+BYTE_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+WORD_P . . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+TaskJobHasWork . . . . . . . . . . . .  PUBLIC   CODE   PROC     0000H  -----
+intptr_t . . . . . . . . . . . . . . .  TYPEDEF  -----  PTR      -----  3
+myTask . . . . . . . . . . . . . . . .  STATIC   XDATA  STRUCT   0000H  34
+uint32_t . . . . . . . . . . . . . . .  TYPEDEF  -----  U_LONG   -----  4
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    913    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     34       7
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       3
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
